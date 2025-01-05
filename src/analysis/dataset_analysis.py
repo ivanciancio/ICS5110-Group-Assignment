@@ -31,8 +31,7 @@ def standardization (arry):
 @st.cache_data
 def perform():
     #load raw dataset
-    #data = './src/data/Data_Science_Salaries.csv'
-    data = './src/data/ds_salaries.csv'
+    data = './src/data/Data_Science_Salaries.csv'
     df = pd.read_csv(data)
     df1 = df
     df1=df1.drop(index=0, axis=1)
