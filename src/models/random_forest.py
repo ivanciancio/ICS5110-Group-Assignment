@@ -8,7 +8,7 @@ from sklearn.model_selection import train_test_split    # For splitting dataset 
 from sklearn.pipeline import Pipeline    # For creating sequential data processing steps
 from sklearn.metrics import mean_absolute_error    # For calculating model accuracy
 
-import utilities as utils
+from data import data_mappings as dm
 
 # Model Parameter Tuning
 N_ESTIMATORS = 550
@@ -21,9 +21,9 @@ MIN_SAMPLE_LEAF = 1
 
 def init():
     # Define prediction features and target variable
-    features = ['experience_level', 'employment_type', 'job_title', 'company_location', 'company_size', 'remote_ratio']    # List of features for prediction
+    features = ['experience_level', 'employment_type', 'job_title', 'employee_residence', 'company_location', 'company_size', 'remote_ratio']    # List of features for prediction
     # Separate features for preprocessing
-    categorical_features = ['experience_level', 'employment_type', 'job_title', 'company_location', 'company_size']    # Features needing encoding
+    categorical_features = ['experience_level', 'employment_type', 'job_title', 'employee_residence', 'company_location', 'company_size']    # Features needing encoding
     numerical_features = ['remote_ratio']    # Features to remain numeric
 
     # Create data preprocessing pipeline
@@ -47,7 +47,7 @@ def init():
     ])
 
     # Split dataset and train the model
-    X_train, X_test, y_train, y_test = train_test_split(st.session_state.regression_data[utils.FEATURES], st.session_state.regression_data['salary_in_usd'], test_size=0.2, random_state=RANDOM_STATE)    # Create training and testing sets
+    X_train, X_test, y_train, y_test = train_test_split(st.session_state.regression_data[dm.REGRESSION_FEATURES], st.session_state.regression_data['salary_in_usd'], test_size=0.2, random_state=RANDOM_STATE)    # Create training and testing sets
     model_pipeline.fit(X_train, y_train)    # Train the model
 
     # Calculate model performance metrics
@@ -55,13 +55,14 @@ def init():
     mae = mean_absolute_error(y_test, y_pred)    # Calculate prediction accuracy
 
     # Calculate dataset statistics
-    total_samples = len(st.session_state.regression_data[utils.FEATURES])    # Total number of records
+    total_samples = len(st.session_state.regression_data[dm.REGRESSION_FEATURES])    # Total number of records
     train_samples = len(X_train)    # Number of training samples
     test_samples = len(X_test)    # Number of testing samples
+    unique_employee_residences = len(st.session_state.regression_data['employee_residence'].unique())    # Count of unique employee residences
     unique_job_titles = len(st.session_state.regression_data['job_title'].unique())    # Count of unique job titles
     unique_locations = len(st.session_state.regression_data['company_location'].unique())    # Count of unique locations
     
-    return preprocessor,model_pipeline,mae,total_samples,train_samples,test_samples,unique_job_titles,unique_locations,features,categorical_features,numerical_features
+    return preprocessor,model_pipeline,mae,total_samples,train_samples,test_samples,unique_employee_residences,unique_job_titles,unique_locations,features,categorical_features,numerical_features
 
 
 def predict(model_pipeline,input_data):
@@ -81,7 +82,7 @@ def predict(model_pipeline,input_data):
         st.error(f"An error occurred during prediction: {e}")    # Handle and display any errors
 
 
-def display_results(preprocessor,model_pipeline,mae,total_samples,train_samples,test_samples,unique_job_titles,unique_locations,features,categorical_features,numerical_features):
+def display_results(preprocessor,model_pipeline,mae,total_samples,train_samples,test_samples,unique_employee_residences,unique_job_titles,unique_locations,features,categorical_features,numerical_features):
     # Display model information in tabular format
     st.subheader("Model Information")
     model_info = {
@@ -119,6 +120,7 @@ def display_results(preprocessor,model_pipeline,mae,total_samples,train_samples,
             'Total Dataset Size',
             'Training Set Size',
             'Testing Set Size',
+            'Unique Employee Residences',
             'Unique Job Titles',
             'Unique Company Locations',
             'Training Data Percentage',
@@ -128,6 +130,7 @@ def display_results(preprocessor,model_pipeline,mae,total_samples,train_samples,
             f'{total_samples:,}',
             f'{train_samples:,}',
             f'{test_samples:,}',
+            f'{unique_employee_residences}',
             f'{unique_job_titles:,}',
             f'{unique_locations:,}',
             f'{(train_samples/total_samples)*100:.1f}%',

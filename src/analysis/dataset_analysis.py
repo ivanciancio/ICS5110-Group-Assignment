@@ -27,15 +27,13 @@ def standardization (arry):
 
     return stdarry
 
-
 @st.cache_data
-def perform():
+def print_information_and_statistics():
     #load raw dataset
     data = './src/data/Data_Science_Salaries.csv'
     df = pd.read_csv(data)
     df1 = df
     df1=df1.drop(index=0, axis=1)
-
 
     #drop duplicates, keeping only one of them
 
@@ -224,4 +222,12 @@ def perform():
     st.write (vectmift)
 
 
+
+
+def perform():
+    st.title("Dataset Information and Statistics")
+    st.write("Some information and statistics about the used dataset:")
+    
+    with st.container(border=True):
+        print_information_and_statistics()
 
