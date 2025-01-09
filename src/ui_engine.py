@@ -87,11 +87,10 @@ def build_form():
     
     if predict_salary_click:
         # Validate that all fields are filled
-        if not all([st.session_state.experience_level, st.session_state.employment_type, st.session_state.job_title, st.session_state.company_location, st.session_state.company_size]):
+        if not all([st.session_state.experience_level, st.session_state.employment_type, st.session_state.job_title, st.session_state.employee_residence, st.session_state.company_location, st.session_state.company_size]):
             st.error("Please fill in all fields before prediction.")
         else:
-            with st.spinner("making predictions, please wait..."):
-                predict_salary()
+            predict_salary()
 
 
 
@@ -107,69 +106,71 @@ def predict_salary():
         "remote_ratio": [st.session_state.remote_ratio]
     }
     
-    classifier_tab,regression_tab=st.tabs(["Classifier Models", "Regression Models"])
-    with classifier_tab.container(border=True):
-        x_input = [
-            form_data["experience_level"][0],
-            form_data["employment_type"][0],
-            form_data["job_title"][0],
-            form_data["employee_residence"][0],
-            str(form_data["remote_ratio"][0]),
-            form_data["company_location"][0],
-            form_data["company_size"][0]
-        ]
-        
-        clas_tab1,clas_tab2=st.tabs(["Gaussian Naive Bayes", "KNN"])
-        with clas_tab1.container(border=True):
-            with st.spinner("training Gaussian Naive Bayes AI model, please wait..."):
-                X,X_train,X_val,y_val,X_test,acc,y_pred,model_pipeline=gaussian_naive_bayes.init()
-            with st.spinner("making predictions, please wait..."):
-                gaussian_naive_bayes.predict(model_pipeline,x_input)
-            st.divider()
-            gaussian_naive_bayes.display_results(X,X_train,X_val,y_val,X_test,acc,y_pred)
-        with clas_tab2.container(border=True):
-            with st.spinner("training KNN AI model, please wait..."):
-                X,X_train,X_val,y_val,X_test,acc,num_neighbours,performance,y_pred,model_pipeline=knn.init()
-            with st.spinner("making predictions, please wait..."):
-                knn.predict(model_pipeline,x_input)
-            st.divider()
-            knn.display_results(X,X_train,X_val,y_val,X_test,acc,num_neighbours,performance,y_pred)
+    classifier_tab,regression_tab,regression_with_hypertuning_tab=st.tabs(["Classifier Models", "Regression Models", "Regression Models with Hypertunning"])
     
-    with regression_tab.container(border=True):
-        df=pd.DataFrame(form_data)
-        reg_tab1,reg_tab2,reg_tab3,reg_tab4=st.tabs(["Gradient Booster Regressor", "Gradient Booster Regressor with Hypertuning", "Random Forest", "Random Forest with Hypertuning"])
-        with reg_tab1.container(border=True):
-            with st.spinner("training Gradient Booster Regressor AI model, please wait..."):
-                cv_mae_mean,cv_mae_std,cv_mae_scores,preprocessor,model_pipeline,X,train_mae,test_mae,X_train,X_test,features,categorical_features,numerical_features=gradient_booster_regressor.init()
-            with st.spinner("making predictions, please wait..."):
-                gradient_booster_regressor.predict(model_pipeline,df)
-            st.divider()
-            gradient_booster_regressor.display_results(cv_mae_mean,cv_mae_std,cv_mae_scores,preprocessor,model_pipeline,X,train_mae,test_mae,X_train,X_test,features,categorical_features,numerical_features)
-        with reg_tab3.container(border=True):
-            with st.spinner("training Random Forest AI model, please wait..."):
-                preprocessor,model_pipeline,model_perf_metrics,cv_metrics,total_samples,train_samples,test_samples,unique_employee_residences,unique_job_titles,unique_locations,features,categorical_features,numerical_features=random_forest.init()
-            with st.spinner("making predictions, please wait..."):
-                random_forest.predict(model_pipeline,df)
-            st.divider()
-            random_forest.display_results(preprocessor,model_pipeline,model_perf_metrics,cv_metrics,total_samples,train_samples,test_samples,unique_employee_residences,unique_job_titles,unique_locations,features,categorical_features,numerical_features)
-        with reg_tab2.container(border=True):
-            with st.spinner("training Gradient Booster Regressor AI model, please wait..."):
-                cv_mae_mean,cv_mae_std,cv_mae_scores,preprocessor,model_pipeline,X,train_mae,test_mae,X_train,X_test,features,categorical_features,numerical_features=gradient_booster_regressor.init(True)
-            with st.spinner("making predictions, please wait..."):
-                gradient_booster_regressor.predict(model_pipeline,df)
-            st.divider()
-            gradient_booster_regressor.display_results(cv_mae_mean,cv_mae_std,cv_mae_scores,preprocessor,model_pipeline,X,train_mae,test_mae,X_train,X_test,features,categorical_features,numerical_features)
-        with reg_tab4.container(border=True):
-            with st.spinner("training Random Forest AI model, please wait..."):
-                preprocessor,model_pipeline,model_perf_metrics,cv_metrics,total_samples,train_samples,test_samples,unique_employee_residences,unique_job_titles,unique_locations,features,categorical_features,numerical_features=random_forest.init(True)
-            with st.spinner("making predictions, please wait..."):
-                random_forest.predict(model_pipeline,df)
-            st.divider()
-            random_forest.display_results(preprocessor,model_pipeline,model_perf_metrics,cv_metrics,total_samples,train_samples,test_samples,unique_employee_residences,unique_job_titles,unique_locations,features,categorical_features,numerical_features)
+    with st.spinner("...still making predictions, please wait..."):
+        with classifier_tab.container(border=True):
+            x_input = [
+                form_data["experience_level"][0],
+                form_data["employment_type"][0],
+                form_data["job_title"][0],
+                form_data["employee_residence"][0],
+                str(form_data["remote_ratio"][0]),
+                form_data["company_location"][0],
+                form_data["company_size"][0]
+            ]
+            
+            clas_tab1,clas_tab2=st.tabs(["Gaussian Naive Bayes", "KNN"])
+            with clas_tab1.container(border=True):
+                with st.spinner("training Gaussian Naive Bayes AI model, please wait..."):
+                    model_pipeline,stats=gaussian_naive_bayes.init()
+                with st.spinner("making predictions, please wait..."):
+                    gaussian_naive_bayes.predict(model_pipeline,x_input)
+                st.divider()
+                gaussian_naive_bayes.display_stats(stats)
+            with clas_tab2.container(border=True):
+                with st.spinner("training KNN AI model, please wait..."):
+                    model_pipeline,stats=knn.init()
+                with st.spinner("making predictions, please wait..."):
+                    knn.predict(model_pipeline,x_input)
+                st.divider()
+                knn.display_stats(stats)
+        
+        with regression_tab.container(border=True):
+            df=pd.DataFrame(form_data)
+            reg_tab1,reg_tab2=st.tabs(["Gradient Booster Regressor", "Random Forest"])
+            with reg_tab1.container(border=True):
+                with st.spinner("training Gradient Booster Regressor AI model, please wait..."):
+                    model_pipeline,preprocessor,stats=gradient_booster_regressor.init()
+                with st.spinner("making predictions, please wait..."):
+                    gradient_booster_regressor.predict(model_pipeline,df)
+                st.divider()
+                gradient_booster_regressor.display_stats(model_pipeline,preprocessor,stats)
+            with reg_tab2.container(border=True):
+                with st.spinner("training Random Forest AI model, please wait..."):
+                    model_pipeline,preprocessor,stats=random_forest.init()
+                with st.spinner("making predictions, please wait..."):
+                    random_forest.predict(model_pipeline,df)
+                st.divider()
+                random_forest.display_stats(model_pipeline,preprocessor,stats)
 
-
-
-
+        with regression_with_hypertuning_tab.container(border=True):
+            df=pd.DataFrame(form_data)
+            reg_tab1,reg_tab2=st.tabs(["Gradient Booster Regressor", "Random Forest"])
+            with reg_tab1.container(border=True):
+                with st.spinner("training Gradient Booster Regressor AI model, please wait..."):
+                    model_pipeline,preprocessor,stats=gradient_booster_regressor.init(True)
+                with st.spinner("making predictions, please wait..."):
+                    gradient_booster_regressor.predict(model_pipeline,df)
+                st.divider()
+                gradient_booster_regressor.display_stats(model_pipeline,preprocessor,stats)
+            with reg_tab2.container(border=True):
+                with st.spinner("training Random Forest AI model, please wait..."):
+                    model_pipeline,preprocessor,stats=random_forest.init(True)
+                with st.spinner("making predictions, please wait..."):
+                    random_forest.predict(model_pipeline,df)
+                st.divider()
+                random_forest.display_stats(model_pipeline,preprocessor,stats)
 
 
 

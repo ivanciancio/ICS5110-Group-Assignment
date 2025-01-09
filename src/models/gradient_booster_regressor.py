@@ -13,22 +13,26 @@ from data import data_mappings as dm
 
 
 # Model Parameter Tuning
+LEARNING_RATE = 0.05
 N_ESTIMATORS = 500
 RANDOM_STATE = 42
 MAX_DEPTH = 6
 MIN_SAMPLE_SPLIT = 5
 MIN_SAMPLE_LEAF = 4
+SUBSAMPLE = 0.8
 
 
 def discover_optimal_params(pipeline, param_grid, X_train, y_train):
     st.write("**Hyperparameter Tuning Progress**")
-    chart = st.line_chart()
-    progress_bar = st.progress(0)
+    
     param_combinations = list(ParameterGrid(param_grid))
     mae_scores = []
     iterations = []
     best_score = float('inf')
     best_params = None
+    
+    chart = st.line_chart()
+    progress_bar = st.progress(0)
     
     st.divider()
     
@@ -53,29 +57,38 @@ def discover_optimal_params(pipeline, param_grid, X_train, y_train):
                 best_params = params
             
             # Display progress metrics
-            test_results={"Tested Params": params, "MAE": mean_cv_score, "Best MAE": best_score, "Best Params": best_params}
-            st.write(test_results)
+            test_results={"Tested Params": params, "Best Params": best_params}
+            col1,col2=st.columns(2)
+            with col1:
+                st.write(f"MAE: :blue[{mean_cv_score:.6f}]")
+                st.write("Tested Params:")
+                st.write(pd.DataFrame(test_results)['Tested Params'])
+            with col2:
+                st.write(f"Best MAE: :green[{best_score:.6f}]")
+                st.write("Best Params:")
+                st.write(pd.DataFrame(test_results)['Best Params'])
             
             # Update real-time chart
             chart.line_chart(pd.DataFrame({'Iteration': iterations, 'MAE': mae_scores}).set_index('Iteration'))
 
             # Add a delay for better visualization
             time.sleep(0.1)
-        st.write("")
+
+        st.success("Tuning Complete")
+        st.write("Best Parameters:", best_params)
+        st.write(f"Best MAE: {best_score}")
 
     # Set the best parameters on the pipeline
     pipeline.set_params(**best_params)
     pipeline.fit(X_train, y_train)
     
-    global N_ESTIMATORS,MAX_DEPTH,MIN_SAMPLE_SPLIT,MIN_SAMPLE_LEAF
+    global LEARNING_RATE,N_ESTIMATORS,MAX_DEPTH,MIN_SAMPLE_SPLIT,MIN_SAMPLE_LEAF,SUBSAMPLE
+    LEARNING_RATE = best_params['regressor__learning_rate']
     N_ESTIMATORS = best_params['regressor__n_estimators']
     MAX_DEPTH = best_params['regressor__max_depth']
     MIN_SAMPLE_SPLIT = best_params['regressor__min_samples_split']
     MIN_SAMPLE_LEAF = best_params['regressor__min_samples_leaf']
-    
-    # st.success("Tuning Complete")
-    # st.write("Best Parameters:", best_params)
-    # st.write(f"Best MAE: {best_score}")
+    SUBSAMPLE = best_params['regressor__subsample']
     
     return pipeline
 
@@ -84,11 +97,13 @@ def get_a_hypertuned_model(pipeline, X_train, y_train):
     # Hyperparameter tuning
     with st.spinner("...hyperparameter tuning..."):
         param_grid = {
+            'regressor__learning_rate': [0.01, 0.05, 0.1, 0.2],
             'regressor__n_estimators': [50, 100, 150, 300],
             'regressor__max_depth': [20, 25, 30, 35],
             'regressor__min_samples_split': [2, 10],
             'regressor__max_features': [7, 15, 20, 'sqrt', 'log2', None],
-            'regressor__min_samples_leaf': [1, 4, 5]
+            'regressor__min_samples_leaf': [1, 4, 5, 6, 10],
+            'regressor__subsample': [0.2, 0.4, 0.6, 0.8]
         }
         with st.container(border=True):
             pipeline = discover_optimal_params(pipeline, param_grid, X_train, y_train)
@@ -122,11 +137,11 @@ def init(use_hypertuning=False):
         ('preprocessor', preprocessor),
         ('regressor', GradientBoostingRegressor(
             n_estimators=N_ESTIMATORS,
-            learning_rate=0.05,
+            learning_rate=LEARNING_RATE,
             max_depth=MAX_DEPTH,
             min_samples_split=MIN_SAMPLE_SPLIT,
             min_samples_leaf=MIN_SAMPLE_LEAF,
-            subsample=0.8,
+            subsample=SUBSAMPLE,
             random_state=RANDOM_STATE
         ))
     ])
@@ -151,7 +166,7 @@ def init(use_hypertuning=False):
     train_mae = mean_absolute_error(y_train, train_pred)
     test_mae = mean_absolute_error(y_test, test_pred)
     
-    return cv_mae_mean,cv_mae_std,cv_mae_scores,preprocessor,model_pipeline,st.session_state.regression_data[features],train_mae,test_mae,X_train,X_test,features,categorical_features,numerical_features
+    return model_pipeline,preprocessor,{ 'cv_mae_mean': cv_mae_mean,'cv_mae_std': cv_mae_std,'cv_mae_scores': cv_mae_scores,'X': st.session_state.regression_data[features],'train_mae': train_mae,'test_mae': test_mae,'X_train': X_train,'X_test': X_test,'features': features,'categorical_features': categorical_features,'numerical_features': numerical_features }
 
 
 def predict(model_pipeline,input_data):
@@ -173,13 +188,13 @@ def predict(model_pipeline,input_data):
         st.write(f"Error details: {str(e)}")
 
 
-def display_results(cv_mae_mean,cv_mae_std,cv_mae_scores,preprocessor,model_pipeline,X,train_mae,test_mae,X_train,X_test,features,categorical_features,numerical_features):
+def display_stats(model_pipeline,preprocessor,stats):
     # Display cross-validation results
     st.subheader("Cross-Validation Results")
-    st.write(f"Average MAE across folds: \${cv_mae_mean:,.2f} ± \${cv_mae_std:,.2f}")
+    st.write(f"Average MAE across folds: \${stats['cv_mae_mean']:,.2f} ± \${stats['cv_mae_std']:,.2f}")
     cv_results = pd.DataFrame({
         'Fold': range(1, 6),
-        'MAE': cv_mae_scores
+        'MAE': stats['cv_mae_scores']
     })
     st.table(cv_results.style.format({'MAE': '${:,.2f}'}))
 
@@ -187,9 +202,9 @@ def display_results(cv_mae_mean,cv_mae_std,cv_mae_scores,preprocessor,model_pipe
     st.subheader("Model Performance Metrics")
     col1, col2 = st.columns(2)
     with col1:
-        st.metric("Training MAE", f"${train_mae:,.2f}")
+        st.metric("Training MAE", f"${stats['train_mae']:,.2f}")
     with col2:
-        st.metric("Testing MAE", f"${test_mae:,.2f}")
+        st.metric("Testing MAE", f"${stats['test_mae']:,.2f}")
 
     # Display model information
     st.subheader("Model Information Used")
@@ -204,8 +219,8 @@ def display_results(cv_mae_mean,cv_mae_std,cv_mae_scores,preprocessor,model_pipe
     split_info = pd.DataFrame({
         'Metric': ['Total Dataset Size', 'Training Data Size', 'Testing Data Size', 
                 'Number of Features', 'Number of Categorical Features', 'Number of Numerical Features'],
-        'Value': [f"{len(X)} records", f"{len(X_train)} records", f"{len(X_test)} records", 
-                f"{len(features)}", f"{len(categorical_features)}", f"{len(numerical_features)}"]
+        'Value': [f"{len(stats['X'])} records", f"{len(stats['X_train'])} records", f"{len(stats['X_test'])} records", 
+                f"{len(stats['features'])}", f"{len(stats['categorical_features'])}", f"{len(stats['numerical_features'])}"]
     })
     st.table(split_info)
 
@@ -213,8 +228,8 @@ def display_results(cv_mae_mean,cv_mae_std,cv_mae_scores,preprocessor,model_pipe
     st.subheader("Top 10 Most Important Features")
     feature_names = (
         preprocessor.named_transformers_['cat']
-        .get_feature_names_out(categorical_features)
-        .tolist() + numerical_features
+        .get_feature_names_out(stats['categorical_features'])
+        .tolist() + stats['numerical_features']
     )
     
     importances = model_pipeline.named_steps['regressor'].feature_importances_

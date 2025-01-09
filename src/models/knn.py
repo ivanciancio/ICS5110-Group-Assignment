@@ -39,7 +39,6 @@ def init():
         acc=accuracy_score(y_val, y_pred)
         performance.append(acc)
 
-    
     best_index = np.argmax(performance)
 
     # calculate performance metrics for the best value of k = 91
@@ -48,7 +47,7 @@ def init():
     y_pred = clf.predict(X_val)
     acc=accuracy_score(y_val, y_pred)
     
-    return X,X_train,X_val,y_val,X_test,acc,num_neighbours,performance,y_pred,clf
+    return clf, { 'X': X,'X_train': X_train,'X_val': X_val,'y_val': y_val,'X_test': X_test,'acc': acc,'num_neighbours': num_neighbours,'performance': performance,'y_pred': y_pred}
 
 
 def predict(model,xinput):
@@ -67,30 +66,30 @@ def predict(model,xinput):
     st.success(f"The salary group prediction for the input vector {x_to_predict} is {predict_salary_class}")
 
 
-def display_results(X,X_train,X_val,y_val,X_test,acc,num_neighbours,performance,y_pred):
+def display_stats(stats):
     st.subheader("Model Information")
     
-    st.write("Total number of datapoints: " + str(X.shape[0]))
+    st.write("Total number of datapoints: " + str(stats['X'].shape[0]))
     st.write("")
-    st.write("Number of datapoints in the training set: " + str(X_train.shape[0]))
-    st.write("Number of datapoints in the validation set: " + str(X_val.shape[0]))
-    st.write("Number of datapoints in the test set: " + str(X_test.shape[0]))
+    st.write("Number of datapoints in the training set: " + str(stats['X_train'].shape[0]))
+    st.write("Number of datapoints in the validation set: " + str(stats['X_val'].shape[0]))
+    st.write("Number of datapoints in the test set: " + str(stats['X_test'].shape[0]))
     st.write("")
-    st.write("The performance of the KNN with K=91 is: %.2f"%(acc))
+    st.write("The performance of the KNN with K=91 is: %.2f"%(stats['acc']))
     st.write("")
     
     # plot the distribution
     fig,ax=plt.subplots(figsize=(10,6))
-    ax.plot(num_neighbours, performance)
+    ax.plot(stats['num_neighbours'], stats['performance'])
     plt.grid(True)
     plt.close(fig)
     st.pyplot(fig)
 
     # Compute the confusion matrix
-    conf_matrix = confusion_matrix(y_val, y_pred, labels=['L', 'M', 'H'])
+    conf_matrix = confusion_matrix(stats['y_val'], stats['y_pred'], labels=['L', 'M', 'H'])
 
     #precision = precision_score(y_test, y_pred)
-    classification_metrics = classification_report(y_val, y_pred, target_names=['L', 'M', 'H'])
+    classification_metrics = classification_report(stats['y_val'], stats['y_pred'], target_names=['L', 'M', 'H'])
 
     # Display results
     st.write("Confusion Matrix with K=91:")

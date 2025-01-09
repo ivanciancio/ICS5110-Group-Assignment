@@ -8,7 +8,7 @@ import time
 from sklearn.compose import ColumnTransformer    # For combining preprocessing steps
 from sklearn.ensemble import RandomForestRegressor    # Machine learning model for prediction
 from sklearn.preprocessing import OneHotEncoder    # For encoding categorical variables
-from sklearn.model_selection import train_test_split, GridSearchCV, ParameterGrid, cross_val_score   # For splitting dataset into training and testing sets
+from sklearn.model_selection import train_test_split, GridSearchCV, ParameterGrid, cross_val_score, KFold   # For splitting dataset into training and testing sets
 from sklearn.pipeline import Pipeline    # For creating sequential data processing steps
 from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score    # For calculating model accuracy
 
@@ -56,15 +56,26 @@ def discover_optimal_params(pipeline, param_grid, X_train, y_train):
                 best_params = params
             
             # Display progress metrics
-            test_results={"Tested Params": params, "MAE": mean_cv_score, "Best MAE": best_score, "Best Params": best_params}
-            st.write(test_results)
+            test_results={"Tested Params": params, "Best Params": best_params}
+            col1,col2=st.columns(2)
+            with col1:
+                st.write(f"MAE: :blue[{mean_cv_score:.6f}]")
+                st.write("Tested Params:")
+                st.write(pd.DataFrame(test_results)['Tested Params'])
+            with col2:
+                st.write(f"Best MAE: :green[{best_score:.6f}]")
+                st.write("Best Params:")
+                st.write(pd.DataFrame(test_results)['Best Params'])
             
             # Update real-time chart
             chart.line_chart(pd.DataFrame({'Iteration': iterations, 'MAE': mae_scores}).set_index('Iteration'))
 
             # Add a delay for better visualization
             time.sleep(0.1)
-        st.write("")
+
+        st.success("Tuning Complete")
+        st.write("Best Parameters:", best_params)
+        st.write(f"Best MAE: {best_score}")
 
     # Set the best parameters on the pipeline
     pipeline.set_params(**best_params)
@@ -77,9 +88,6 @@ def discover_optimal_params(pipeline, param_grid, X_train, y_train):
     MIN_SAMPLE_SPLIT = best_params['random_forest_model__min_samples_split']
     MIN_SAMPLE_LEAF = best_params['random_forest_model__min_samples_leaf']
     
-    # st.success("Tuning Complete")
-    # st.write("Best Parameters:", best_params)
-    # st.write(f"Best MAE: {best_score}")
     
     return pipeline
 
@@ -92,18 +100,19 @@ def get_a_hypertuned_model(pipeline, X_train, y_train):
             'random_forest_model__max_depth': [20, 25, 30, 35],
             'random_forest_model__min_samples_split': [2, 10],
             'random_forest_model__max_features': [7, 15, 20, 'sqrt', 'log2', None],
-            'random_forest_model__min_samples_leaf': [1, 4, 5]
+            'random_forest_model__min_samples_leaf': [1, 4, 5, 6, 10]
         }
         with st.container(border=True):
             pipeline = discover_optimal_params(pipeline, param_grid, X_train, y_train)
             best_model = pipeline
 
         # with st.container(border=True):
-        #     grid_search = GridSearchCV(pipeline, param_grid, cv=5, scoring='neg_mean_absolute_error', verbose=2)
+        #     grid_search = GridSearchCV(pipeline, param_grid, cv=5, scoring='neg_mean_absolute_error', verbose=1)
         #     grid_search.fit(X_train, y_train)
         #     best_model = grid_search.best_estimator_
     
     return best_model
+
 
 
 def init(use_hypertuning=False):
@@ -150,7 +159,8 @@ def init(use_hypertuning=False):
     
     # Cross-validation 
     cv_metrics={}
-    cv_metrics['cv_score'] = cross_val_score(model_pipeline, X_train, y_train, cv=5, scoring='neg_mean_absolute_error')
+    cv = KFold(n_splits=5, shuffle=True, random_state=42)
+    cv_metrics['cv_score'] = cross_val_score(model_pipeline, X_train, y_train, cv=cv, scoring='neg_mean_absolute_error')
     cv_metrics['cv_mae_scores'] = -cv_metrics['cv_score']
     cv_metrics['cv_mae_mean'] = cv_metrics['cv_mae_scores'].mean()
     cv_metrics['cv_mae_std'] = cv_metrics['cv_mae_scores'].std()
@@ -163,7 +173,7 @@ def init(use_hypertuning=False):
     unique_job_titles = len(st.session_state.regression_data['job_title'].unique())    # Count of unique job titles
     unique_locations = len(st.session_state.regression_data['company_location'].unique())    # Count of unique locations
     
-    return preprocessor,model_pipeline,model_perf_metrics,cv_metrics,total_samples,train_samples,test_samples,unique_employee_residences,unique_job_titles,unique_locations,features,categorical_features,numerical_features
+    return model_pipeline,preprocessor,{ 'model_perf_metrics': model_perf_metrics,'cv_metrics': cv_metrics,'total_samples': total_samples,'train_samples': train_samples,'test_samples': test_samples,'unique_employee_residences': unique_employee_residences,'unique_job_titles': unique_job_titles,'unique_locations': unique_locations,'features': features,'categorical_features': categorical_features,'numerical_features': numerical_features }
 
 
 def predict(model_pipeline,input_data):
@@ -183,7 +193,7 @@ def predict(model_pipeline,input_data):
         st.error(f"An error occurred during prediction: {e}")    # Handle and display any errors
 
 
-def display_results(preprocessor,model_pipeline,model_perf_metrics,cv_metrics,total_samples,train_samples,test_samples,unique_employee_residences,unique_job_titles,unique_locations,features,categorical_features,numerical_features):
+def display_stats(model_pipeline,preprocessor,stats):
     # Display model evaluation in tabular format
     st.subheader("Model Evaluation")
     model_info = {
@@ -207,23 +217,23 @@ def display_results(preprocessor,model_pipeline,model_perf_metrics,cv_metrics,to
             MAX_FEATURES,
             MIN_SAMPLE_SPLIT,
             MIN_SAMPLE_LEAF,
-            model_perf_metrics['mae'],
-            model_perf_metrics['mse'],
-            model_perf_metrics['r2']
+            stats['model_perf_metrics']['mae'],
+            stats['model_perf_metrics']['mse'],
+            stats['model_perf_metrics']['r2']
         ]
     }
     model_info_df = pd.DataFrame(pd.DataFrame(model_info))
     html_table = model_info_df.to_html(index=False)
     st.markdown(html_table,unsafe_allow_html=True)    # Present model parameters
     
-    st.write(f"In the context of our task, the calculated MAE was approximately ${model_perf_metrics['mae']:,.2f}, meaning the model's salary predictions are off by about that amount on average.")
+    st.write(f"In the context of our task, the calculated MAE was approximately ${stats['model_perf_metrics']['mae']:,.2f}, meaning the model's salary predictions are off by about that amount on average.")
     
     
     st.subheader("Cross-Validation Results")
-    st.write(f"Cross-Validation MAE: \${cv_metrics['cv_mae_mean']:,.2f} ± \${cv_metrics['cv_mae_std']:,.2f}")
+    st.write(f"Cross-Validation MAE: \${stats['cv_metrics']['cv_mae_mean']:,.2f} ± \${stats['cv_metrics']['cv_mae_std']:,.2f}")
     cv_results_df = pd.DataFrame({
-        'Fold': range(1, len(cv_metrics['cv_mae_scores'])+1),
-        'MAE': cv_metrics['cv_mae_scores']
+        'Fold': range(1, len(stats['cv_metrics']['cv_mae_scores'])+1),
+        'MAE': stats['cv_metrics']['cv_mae_scores']
     })
     st.markdown(cv_results_df.style.format({'MAE': '${:,.2f}'}).to_html(index=True),unsafe_allow_html=True)
     
@@ -242,14 +252,14 @@ def display_results(preprocessor,model_pipeline,model_perf_metrics,cv_metrics,to
             'Testing Data Percentage'
         ],
         'Value': [
-            f'{total_samples:,}',
-            f'{train_samples:,}',
-            f'{test_samples:,}',
-            f'{unique_employee_residences}',
-            f'{unique_job_titles:,}',
-            f'{unique_locations:,}',
-            f'{(train_samples/total_samples)*100:.1f}%',
-            f'{(test_samples/total_samples)*100:.1f}%'
+            f'{stats['total_samples']:,}',
+            f'{stats['train_samples']:,}',
+            f'{stats['test_samples']:,}',
+            f'{stats['unique_employee_residences']}',
+            f'{stats['unique_job_titles']:,}',
+            f'{stats['unique_locations']:,}',
+            f'{(stats['train_samples']/stats['total_samples'])*100:.1f}%',
+            f'{(stats['test_samples']/stats['total_samples'])*100:.1f}%'
         ]
     }
     
@@ -259,22 +269,22 @@ def display_results(preprocessor,model_pipeline,model_perf_metrics,cv_metrics,to
     
     # Display features used for prediction
     st.subheader("Features Used for Prediction")
-    features_df = pd.DataFrame({'Features': features})
+    features_df = pd.DataFrame({'Features': stats['features']})
     st.markdown(features_df.to_html(index=False),unsafe_allow_html=True)    # Present feature list
     
     # Display feature importance
-    st.subheader("Top 15 Most Important Features")
+    st.subheader("Top 10 Most Important Features")
     feature_names = (
         preprocessor.named_transformers_['cat']
-        .get_feature_names_out(categorical_features)
-        .tolist() + numerical_features
+        .get_feature_names_out(stats['categorical_features'])
+        .tolist() + stats['numerical_features']
     )    
     
     importances = model_pipeline.named_steps['random_forest_model'].feature_importances_
     feature_importance_df = pd.DataFrame({
         'Feature': feature_names,
         'Importance': importances
-    }).sort_values('Importance', ascending=False).head(15)
+    }).sort_values('Importance', ascending=False).head(10)
     st.markdown(feature_importance_df.style.format({'Importance': '{:.4f}'}).to_html(index=False),unsafe_allow_html=True)
     st.bar_chart(feature_importance_df.set_index('Feature'))
 
