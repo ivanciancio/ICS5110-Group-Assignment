@@ -137,7 +137,7 @@ def predict_salary():
     
     with regression_tab.container(border=True):
         df=pd.DataFrame(form_data)
-        reg_tab1,reg_tab2=st.tabs(["Gradient Booster Regressor", "Random Forest"])
+        reg_tab1,reg_tab2,reg_tab3=st.tabs(["Gradient Booster Regressor", "Random Forest", "Random Forest with Hypertuned Parameters"])
         with reg_tab1.container(border=True):
             with st.spinner("training Gradient Booster Regressor AI model, please wait..."):
                 cv_mae_mean,cv_mae_std,cv_mae_scores,preprocessor,model_pipeline,X,train_mae,test_mae,X_train,X_test,features,categorical_features,numerical_features=gradient_booster_regressor.init()
@@ -147,10 +147,22 @@ def predict_salary():
             gradient_booster_regressor.display_results(cv_mae_mean,cv_mae_std,cv_mae_scores,preprocessor,model_pipeline,X,train_mae,test_mae,X_train,X_test,features,categorical_features,numerical_features)
         with reg_tab2.container(border=True):
             with st.spinner("training Random Forest AI model, please wait..."):
-                preprocessor,model_pipeline,mae,total_samples,train_samples,test_samples,unique_employee_residences,unique_job_titles,unique_locations,features,categorical_features,numerical_features=random_forest.init()
+                preprocessor,model_pipeline,model_perf_metrics,cv_metrics,total_samples,train_samples,test_samples,unique_employee_residences,unique_job_titles,unique_locations,features,categorical_features,numerical_features=random_forest.init()
             with st.spinner("making predictions, please wait..."):
                 random_forest.predict(model_pipeline,df)
             st.divider()
-            random_forest.display_results(preprocessor,model_pipeline,mae,total_samples,train_samples,test_samples,unique_employee_residences,unique_job_titles,unique_locations,features,categorical_features,numerical_features)
+            random_forest.display_results(preprocessor,model_pipeline,model_perf_metrics,cv_metrics,total_samples,train_samples,test_samples,unique_employee_residences,unique_job_titles,unique_locations,features,categorical_features,numerical_features)
+        with reg_tab3.container(border=True):
+            with st.spinner("training Random Forest AI model, please wait..."):
+                preprocessor,model_pipeline,model_perf_metrics,cv_metrics,total_samples,train_samples,test_samples,unique_employee_residences,unique_job_titles,unique_locations,features,categorical_features,numerical_features=random_forest.init(True)
+            with st.spinner("making predictions, please wait..."):
+                random_forest.predict(model_pipeline,df)
+            st.divider()
+            random_forest.display_results(preprocessor,model_pipeline,model_perf_metrics,cv_metrics,total_samples,train_samples,test_samples,unique_employee_residences,unique_job_titles,unique_locations,features,categorical_features,numerical_features)
+
+
+
+
+
 
 

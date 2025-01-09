@@ -12,10 +12,10 @@ from data import data_mappings as dm
 
 def init():
     # Define features and target
-    features = ['experience_level', 'employment_type', 'job_title', 'employee_residence', 'company_location', 'company_size', 'remote_ratio']
+    features = dm.REGRESSION_FEATURES
     # Separate numerical and categorical features
-    categorical_features = ['experience_level', 'employment_type', 'job_title', 'employee_residence', 'company_location', 'company_size']
-    numerical_features = ['remote_ratio']
+    categorical_features = features[0:-1]    # Features needing encoding
+    numerical_features = [features[-1]]    # Features to remain numeric
 
     # Create preprocessing pipeline with both scaling and encoding
     preprocessor = ColumnTransformer(
@@ -40,13 +40,13 @@ def init():
 
     # Perform cross-validation
     cv = KFold(n_splits=5, shuffle=True, random_state=42)
-    cv_scores = cross_val_score(model_pipeline, st.session_state.regression_data[dm.REGRESSION_FEATURES], st.session_state.regression_data['salary_in_usd'], cv=cv, scoring='neg_mean_absolute_error')
+    cv_scores = cross_val_score(model_pipeline, st.session_state.regression_data[features], st.session_state.regression_data['salary_in_usd'], cv=cv, scoring='neg_mean_absolute_error')
     cv_mae_scores = -cv_scores
     cv_mae_mean = cv_mae_scores.mean()
     cv_mae_std = cv_mae_scores.std()
 
     # Split the data and train the final model
-    X_train, X_test, y_train, y_test = train_test_split(st.session_state.regression_data[dm.REGRESSION_FEATURES], st.session_state.regression_data['salary_in_usd'], test_size=0.2, random_state=42)
+    X_train, X_test, y_train, y_test = train_test_split(st.session_state.regression_data[features], st.session_state.regression_data['salary_in_usd'], test_size=0.2, random_state=42)
     model_pipeline.fit(X_train, y_train)
 
     # Calculate metrics
@@ -55,7 +55,7 @@ def init():
     train_mae = mean_absolute_error(y_train, train_pred)
     test_mae = mean_absolute_error(y_test, test_pred)
     
-    return cv_mae_mean,cv_mae_std,cv_mae_scores,preprocessor,model_pipeline,st.session_state.regression_data[dm.REGRESSION_FEATURES],train_mae,test_mae,X_train,X_test,features,categorical_features,numerical_features
+    return cv_mae_mean,cv_mae_std,cv_mae_scores,preprocessor,model_pipeline,st.session_state.regression_data[features],train_mae,test_mae,X_train,X_test,features,categorical_features,numerical_features
 
 
 def predict(model_pipeline,input_data):
@@ -128,3 +128,4 @@ def display_results(cv_mae_mean,cv_mae_std,cv_mae_scores,preprocessor,model_pipe
     }).sort_values('Importance', ascending=False).head(10)
 
     st.table(feature_importance.style.format({'Importance': '{:.4f}'}))
+    st.bar_chart(feature_importance.set_index('Feature'))
