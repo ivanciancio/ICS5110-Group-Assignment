@@ -32,9 +32,9 @@ def discover_optimal_params(pipeline, param_grid, X_train, y_train):
     iterations = []
     best_score = float('inf')
     best_params = None
+    
     st.divider()
     
-    st.write("**Details**")
     with st.empty():
         for i, params in enumerate(param_combinations):
             # Update progress bar
@@ -70,6 +70,13 @@ def discover_optimal_params(pipeline, param_grid, X_train, y_train):
     pipeline.set_params(**best_params)
     pipeline.fit(X_train, y_train)
     
+    global N_ESTIMATORS,MAX_DEPTH,MAX_FEATURES,MIN_SAMPLE_SPLIT,MIN_SAMPLE_LEAF
+    N_ESTIMATORS = best_params['random_forest_model__n_estimators']
+    MAX_DEPTH = best_params['random_forest_model__max_depth']
+    MAX_FEATURES = best_params['random_forest_model__max_features']
+    MIN_SAMPLE_SPLIT = best_params['random_forest_model__min_samples_split']
+    MIN_SAMPLE_LEAF = best_params['random_forest_model__min_samples_leaf']
+    
     # st.success("Tuning Complete")
     # st.write("Best Parameters:", best_params)
     # st.write(f"Best MAE: {best_score}")
@@ -81,19 +88,20 @@ def get_a_hypertuned_model(pipeline, X_train, y_train):
     # Hyperparameter tuning
     with st.spinner("...hyperparameter tuning..."):
         param_grid = {
-            'random_forest_model__n_estimators': [50, 100, 150, 300, 500, 550],
+            'random_forest_model__n_estimators': [50, 100, 150, 300],
             'random_forest_model__max_depth': [20, 25, 30, 35],
             'random_forest_model__min_samples_split': [2, 10],
-            'random_forest_model__max_features': [15, 20, 'sqrt', 'log2', None]
+            'random_forest_model__max_features': [7, 15, 20, 'sqrt', 'log2', None],
+            'random_forest_model__min_samples_leaf': [1, 4, 5]
         }
         with st.container(border=True):
             pipeline = discover_optimal_params(pipeline, param_grid, X_train, y_train)
             best_model = pipeline
 
-        with st.container(border=True):
-            grid_search = GridSearchCV(pipeline, param_grid, cv=5, scoring='neg_mean_absolute_error', verbose=2)
-            grid_search.fit(X_train, y_train)
-            best_model = grid_search.best_estimator_
+        # with st.container(border=True):
+        #     grid_search = GridSearchCV(pipeline, param_grid, cv=5, scoring='neg_mean_absolute_error', verbose=2)
+        #     grid_search.fit(X_train, y_train)
+        #     best_model = grid_search.best_estimator_
     
     return best_model
 
@@ -122,7 +130,7 @@ def init(use_hypertuning=False):
             max_depth=MAX_DEPTH,
             max_features=MAX_FEATURES,
             min_samples_split=MIN_SAMPLE_SPLIT,
-            #min_samples_leaf=MIN_SAMPLE_LEAF,
+            min_samples_leaf=MIN_SAMPLE_LEAF,
             ))    # Apply data preprocessing
     ])
 
