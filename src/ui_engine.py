@@ -81,11 +81,18 @@ def build_form():
             value = st.session_state.remote_ratio,
             step = 50
         )
-        
-        # Process prediction when requested
-        predict_salary_click = st.form_submit_button("Predict Salary")
+        col1,col2 = st.columns(2)
+        with col2:
+            st.session_state.hypertuning_enabled = st.toggle(
+                "Enable Regressor Model Hypertuning",
+                value=st.session_state.hypertuning_enabled
+            )
+        with col1:
+            # Process prediction when requested
+            predict_salary_click = st.form_submit_button("Predict Salary", use_container_width=True)
     
-    if predict_salary_click:
+    if predict_salary_click or st.session_state.predict_button_clicked:
+        st.session_state.predict_button_clicked=True
         # Validate that all fields are filled
         if not all([st.session_state.experience_level, st.session_state.employment_type, st.session_state.job_title, st.session_state.employee_residence, st.session_state.company_location, st.session_state.company_size]):
             st.error("Please fill in all fields before prediction.")
@@ -106,7 +113,10 @@ def predict_salary():
         "remote_ratio": [st.session_state.remote_ratio]
     }
     
-    classifier_tab,regression_tab,regression_with_hypertuning_tab=st.tabs(["Classifier Models", "Regression Models", "Regression Models with Hypertunning"])
+    if st.session_state.hypertuning_enabled:
+        classifier_tab,regression_tab,regression_with_hypertuning_tab=st.tabs(["Classifier Models", "Regression Models", "Regression Models with Hypertunning"])
+    else:
+        classifier_tab,regression_tab=st.tabs(["Classifier Models", "Regression Models"])
     
     with st.spinner("...still making predictions, please wait..."):
         with classifier_tab.container(border=True):
@@ -154,25 +164,26 @@ def predict_salary():
                 st.divider()
                 gradient_booster_regressor.display_stats(model_pipeline,preprocessor,stats)
 
-        with regression_with_hypertuning_tab.container(border=True):
-            df=pd.DataFrame(form_data)
-            reg_tab1,reg_tab2=st.tabs(["Random Forest", "Gradient Booster Regressor"])
-            with reg_tab1.container(border=True):
-                with st.spinner("training Random Forest AI model, please wait..."):
-                    model_pipeline,preprocessor,stats=random_forest.init(True)
-                st.divider()
-                with st.spinner("making predictions, please wait..."):
-                    random_forest.predict(model_pipeline,df)
-                st.divider()
-                random_forest.display_stats(model_pipeline,preprocessor,stats)
-            with reg_tab2.container(border=True):
-                with st.spinner("training Gradient Booster Regressor AI model, please wait..."):
-                    model_pipeline,preprocessor,stats=gradient_booster_regressor.init(True)
-                st.divider()
-                with st.spinner("making predictions, please wait..."):
-                    gradient_booster_regressor.predict(model_pipeline,df)
-                st.divider()
-                gradient_booster_regressor.display_stats(model_pipeline,preprocessor,stats)
+        if st.session_state.hypertuning_enabled:
+            with regression_with_hypertuning_tab.container(border=True):
+                df=pd.DataFrame(form_data)
+                reg_tab1,reg_tab2=st.tabs(["Random Forest", "Gradient Booster Regressor"])
+                with reg_tab1.container(border=True):
+                    with st.spinner("training Random Forest AI model, please wait..."):
+                        model_pipeline,preprocessor,stats=random_forest.init(True)
+                    st.divider()
+                    with st.spinner("making predictions, please wait..."):
+                        random_forest.predict(model_pipeline,df)
+                    st.divider()
+                    random_forest.display_stats(model_pipeline,preprocessor,stats)
+                with reg_tab2.container(border=True):
+                    with st.spinner("training Gradient Booster Regressor AI model, please wait..."):
+                        model_pipeline,preprocessor,stats=gradient_booster_regressor.init(True)
+                    st.divider()
+                    with st.spinner("making predictions, please wait..."):
+                        gradient_booster_regressor.predict(model_pipeline,df)
+                    st.divider()
+                    gradient_booster_regressor.display_stats(model_pipeline,preprocessor,stats)
 
 
 

@@ -34,12 +34,6 @@ def init_session_variables():
     
     if "remote_ratio" not in st.session_state:
         st.session_state.remote_ratio=0
-    
-    if "hypertuning_enabled" not in st.session_state:
-        st.session_state.hypertuning_enabled=False
-    
-    if "predict_button_clicked" not in st.session_state:
-        st.session_state.predict_button_clicked=False
 
 
 # Function to load and cache the datasets for improved performance
