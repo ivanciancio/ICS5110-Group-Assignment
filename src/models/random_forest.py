@@ -49,9 +49,8 @@ def discover_optimal_params(pipeline, param_grid, X_train, y_train):
     
     chart = st.line_chart()
     progress_bar = st.progress(0)
-    placeholder = st.empty()
-    
     st.divider()
+    placeholder = st.empty()
     
     # Initialize tracking variables
     mae_scores = []
@@ -60,7 +59,7 @@ def discover_optimal_params(pipeline, param_grid, X_train, y_train):
     best_params = None
     
     # Create batches of parameter combinations for progress updates
-    batch_size = max(1, n_combinations // 20)  # Update progress roughly 20 times
+    batch_size = max(1, n_combinations // 350)  # Update progress roughly 350 times
     
     try:
         # Initialize parallel processing
@@ -110,6 +109,9 @@ def discover_optimal_params(pipeline, param_grid, X_train, y_train):
                 
                 # Small delay for UI updates
                 time.sleep(0.1)
+
+            with placeholder:
+                st.write("")
     
     except Exception as e:
         st.error(f"An error occurred during parallel processing: {str(e)}")
@@ -117,19 +119,19 @@ def discover_optimal_params(pipeline, param_grid, X_train, y_train):
     
     finally:
         st.success("Tuning Complete")
-        st.write("Best Parameters:", best_params)
-        st.write(f"Best MAE: {best_score}")
+        st.write(f"Best MAE: :green[{best_score}]")
+        st.write("Best Parameters:", pd.DataFrame(best_params.items(), columns=['Model Parameter', 'Optimal Value']))
         
         # Set the best parameters and fit on full training data
         pipeline.set_params(**best_params)
         pipeline.fit(X_train, y_train)
         
         global N_ESTIMATORS, MAX_DEPTH, MAX_FEATURES, MIN_SAMPLE_SPLIT, MIN_SAMPLE_LEAF
-        N_ESTIMATORS = best_params['random_forest_model__n_estimators']
-        MAX_DEPTH = best_params['random_forest_model__max_depth']
-        MAX_FEATURES = best_params['random_forest_model__max_features']
-        MIN_SAMPLE_SPLIT = best_params['random_forest_model__min_samples_split']
-        MIN_SAMPLE_LEAF = best_params['random_forest_model__min_samples_leaf']
+        N_ESTIMATORS = best_params['rf_m__n_estimators']
+        MAX_DEPTH = best_params['rf_m__max_depth']
+        MAX_FEATURES = best_params['rf_m__max_features']
+        MIN_SAMPLE_SPLIT = best_params['rf_m__min_samples_split']
+        MIN_SAMPLE_LEAF = best_params['rf_m__min_samples_leaf']
     
     return pipeline
 
@@ -137,11 +139,11 @@ def get_a_hypertuned_model(pipeline, X_train, y_train):
     # Hyperparameter tuning
     with st.spinner("...hyperparameter tuning..."):
         param_grid = {
-            'random_forest_model__n_estimators': [50, 100, 150, 300],
-            'random_forest_model__max_depth': [20, 25, 30, 35],
-            'random_forest_model__min_samples_split': [2, 10],
-            'random_forest_model__max_features': [7, 15, 20, 'sqrt', 'log2', None],
-            'random_forest_model__min_samples_leaf': [1, 4, 5, 6, 10]
+            'rf_m__n_estimators': [50, 100, 150, 300],
+            'rf_m__max_depth': [20, 25, 30, 35],
+            'rf_m__min_samples_split': [2, 10],
+            'rf_m__max_features': [7, 15, 20],
+            'rf_m__min_samples_leaf': [1, 4, 5, 6, 10]
         }
         with st.container(border=True):
             pipeline = discover_optimal_params(pipeline, param_grid, X_train, y_train)
@@ -167,7 +169,7 @@ def init(use_hypertuning=False):
     # Create complete machine learning pipeline
     model_pipeline = Pipeline(steps=[
         ('preprocessor', preprocessor),    # Apply data preprocessing
-        ('random_forest_model', RandomForestRegressor(
+        ('rf_m', RandomForestRegressor(
             n_estimators=N_ESTIMATORS,
             random_state=RANDOM_STATE,
             max_depth=MAX_DEPTH,
@@ -336,7 +338,7 @@ def display_stats(model_pipeline, preprocessor, stats):
         .tolist() + stats['numerical_features']
     )    
     
-    importances = model_pipeline.named_steps['random_forest_model'].feature_importances_
+    importances = model_pipeline.named_steps['rf_m'].feature_importances_
     feature_importance_df = pd.DataFrame({
         'Feature': feature_names,
         'Importance': importances

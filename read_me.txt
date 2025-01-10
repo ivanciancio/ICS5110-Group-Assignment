@@ -2,6 +2,7 @@
 ** To Create a Virtual Python Environment **
 ********************************************
 python3
+>>> exit()
 python3 -m venv .venv
 source .venv/Scripts/activate
 python.exe -m pip install --upgrade pip

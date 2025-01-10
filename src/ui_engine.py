@@ -138,39 +138,41 @@ def predict_salary():
         
         with regression_tab.container(border=True):
             df=pd.DataFrame(form_data)
-            reg_tab1,reg_tab2=st.tabs(["Gradient Booster Regressor", "Random Forest"])
+            reg_tab1,reg_tab2=st.tabs(["Random Forest", "Gradient Booster Regressor"])
             with reg_tab1.container(border=True):
-                with st.spinner("training Gradient Booster Regressor AI model, please wait..."):
-                    model_pipeline,preprocessor,stats=gradient_booster_regressor.init()
-                with st.spinner("making predictions, please wait..."):
-                    gradient_booster_regressor.predict(model_pipeline,df)
-                st.divider()
-                gradient_booster_regressor.display_stats(model_pipeline,preprocessor,stats)
-            with reg_tab2.container(border=True):
                 with st.spinner("training Random Forest AI model, please wait..."):
                     model_pipeline,preprocessor,stats=random_forest.init()
                 with st.spinner("making predictions, please wait..."):
                     random_forest.predict(model_pipeline,df)
                 st.divider()
                 random_forest.display_stats(model_pipeline,preprocessor,stats)
-
-        with regression_with_hypertuning_tab.container(border=True):
-            df=pd.DataFrame(form_data)
-            reg_tab1,reg_tab2=st.tabs(["Gradient Booster Regressor", "Random Forest"])
-            with reg_tab1.container(border=True):
+            with reg_tab2.container(border=True):
                 with st.spinner("training Gradient Booster Regressor AI model, please wait..."):
-                    model_pipeline,preprocessor,stats=gradient_booster_regressor.init(True)
+                    model_pipeline,preprocessor,stats=gradient_booster_regressor.init()
                 with st.spinner("making predictions, please wait..."):
                     gradient_booster_regressor.predict(model_pipeline,df)
                 st.divider()
                 gradient_booster_regressor.display_stats(model_pipeline,preprocessor,stats)
-            with reg_tab2.container(border=True):
+
+        with regression_with_hypertuning_tab.container(border=True):
+            df=pd.DataFrame(form_data)
+            reg_tab1,reg_tab2=st.tabs(["Random Forest", "Gradient Booster Regressor"])
+            with reg_tab1.container(border=True):
                 with st.spinner("training Random Forest AI model, please wait..."):
                     model_pipeline,preprocessor,stats=random_forest.init(True)
+                st.divider()
                 with st.spinner("making predictions, please wait..."):
                     random_forest.predict(model_pipeline,df)
                 st.divider()
                 random_forest.display_stats(model_pipeline,preprocessor,stats)
+            with reg_tab2.container(border=True):
+                with st.spinner("training Gradient Booster Regressor AI model, please wait..."):
+                    model_pipeline,preprocessor,stats=gradient_booster_regressor.init(True)
+                st.divider()
+                with st.spinner("making predictions, please wait..."):
+                    gradient_booster_regressor.predict(model_pipeline,df)
+                st.divider()
+                gradient_booster_regressor.display_stats(model_pipeline,preprocessor,stats)
 
 
 

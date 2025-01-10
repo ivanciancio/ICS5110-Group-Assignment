@@ -47,9 +47,8 @@ def discover_optimal_params(pipeline, param_grid, X_train, y_train):
     
     chart = st.line_chart()
     progress_bar = st.progress(0)
-    placeholder = st.empty()
-    
     st.divider()
+    placeholder = st.empty()
     
     # Initialize tracking variables
     mae_scores = []
@@ -58,7 +57,7 @@ def discover_optimal_params(pipeline, param_grid, X_train, y_train):
     best_params = None
     
     # Create batches of parameter combinations for progress updates
-    batch_size = max(1, n_combinations // 20)  # Update progress roughly 20 times
+    batch_size = max(1, n_combinations // 350)  # Update progress roughly 350 times
     
     try:
         # Initialize parallel processing
@@ -108,6 +107,9 @@ def discover_optimal_params(pipeline, param_grid, X_train, y_train):
                 
                 # Small delay for UI updates
                 time.sleep(0.1)
+
+            with placeholder:
+                st.write("")
     
     except Exception as e:
         st.error(f"An error occurred during parallel processing: {str(e)}")
@@ -115,8 +117,8 @@ def discover_optimal_params(pipeline, param_grid, X_train, y_train):
     
     finally:
         st.success("Tuning Complete")
-        st.write("Best Parameters:", best_params)
-        st.write(f"Best MAE: {best_score}")
+        st.write(f"Best MAE: :green[{best_score}]")
+        st.write("Best Parameters:", pd.DataFrame(best_params.items(), columns=['Model Parameter', 'Optimal Value']))
         
         # Set the best parameters and fit on full training data
         pipeline.set_params(**best_params)
@@ -124,12 +126,12 @@ def discover_optimal_params(pipeline, param_grid, X_train, y_train):
         
         # Update global parameters
         global LEARNING_RATE, N_ESTIMATORS, MAX_DEPTH, MIN_SAMPLE_SPLIT, MIN_SAMPLE_LEAF, SUBSAMPLE
-        LEARNING_RATE = best_params['regressor__learning_rate']
-        N_ESTIMATORS = best_params['regressor__n_estimators']
-        MAX_DEPTH = best_params['regressor__max_depth']
-        MIN_SAMPLE_SPLIT = best_params['regressor__min_samples_split']
-        MIN_SAMPLE_LEAF = best_params['regressor__min_samples_leaf']
-        SUBSAMPLE = best_params['regressor__subsample']
+        LEARNING_RATE = best_params['gb_m__learning_rate']
+        N_ESTIMATORS = best_params['gb_m__n_estimators']
+        MAX_DEPTH = best_params['gb_m__max_depth']
+        MIN_SAMPLE_SPLIT = best_params['gb_m__min_samples_split']
+        MIN_SAMPLE_LEAF = best_params['gb_m__min_samples_leaf']
+        SUBSAMPLE = best_params['gb_m__subsample']
     
     return pipeline
 
@@ -137,13 +139,13 @@ def get_a_hypertuned_model(pipeline, X_train, y_train):
     # Hyperparameter tuning
     with st.spinner("...hyperparameter tuning..."):
         param_grid = {
-            'regressor__learning_rate': [0.01, 0.05, 0.1, 0.2],
-            'regressor__n_estimators': [50, 100, 150, 300],
-            'regressor__max_depth': [20, 25, 30, 35],
-            'regressor__min_samples_split': [2, 10],
-            'regressor__max_features': [7, 15, 20, 'sqrt', 'log2', None],
-            'regressor__min_samples_leaf': [1, 4, 5, 6, 10],
-            'regressor__subsample': [0.2, 0.4, 0.6, 0.8]
+            'gb_m__learning_rate': [0.01, 0.05, 0.1, 0.2],
+            'gb_m__n_estimators': [50, 100, 150, 300],
+            'gb_m__max_depth': [20, 25, 30, 35],
+            'gb_m__min_samples_split': [2, 10],
+            'gb_m__max_features': [7, 15, 20],
+            'gb_m__min_samples_leaf': [1, 4, 5, 6, 10],
+            'gb_m__subsample': [0.2, 0.4, 0.6, 0.8]
         }
         with st.container(border=True):
             pipeline = discover_optimal_params(pipeline, param_grid, X_train, y_train)
@@ -168,7 +170,7 @@ def init(use_hypertuning=False):
     # Create model pipeline with GradientBoostingRegressor
     model_pipeline = Pipeline([
         ('preprocessor', preprocessor),
-        ('regressor', GradientBoostingRegressor(
+        ('gb_m', GradientBoostingRegressor(
             n_estimators=N_ESTIMATORS,
             learning_rate=LEARNING_RATE,
             max_depth=MAX_DEPTH,
@@ -182,8 +184,8 @@ def init(use_hypertuning=False):
     # Perform cross-validation
     cv = KFold(n_splits=5, shuffle=True, random_state=42)
     cv_scores = cross_val_score(model_pipeline, st.session_state.regression_data[features], 
-                              st.session_state.regression_data['salary_in_usd'], 
-                              cv=cv, scoring='neg_mean_absolute_error')
+                                st.session_state.regression_data['salary_in_usd'], 
+                                cv=cv, scoring='neg_mean_absolute_error')
     cv_mae_scores = -cv_scores
     cv_mae_mean = cv_mae_scores.mean()
     cv_mae_std = cv_mae_scores.std()
@@ -261,9 +263,9 @@ def display_stats(model_pipeline, preprocessor, stats):
     st.subheader("Model Information Used")
     model_info = pd.DataFrame({
         'Parameter': ['Algorithm', 'Number of Trees', 'Learning Rate', 'Max Tree Depth', 
-                     'Min Samples Split', 'Min Samples Leaf', 'Subsample Ratio', 'Cross-Validation Folds'],
+                        'Min Samples Split', 'Min Samples Leaf', 'Subsample Ratio', 'Cross-Validation Folds'],
         'Value': ['Gradient Boosting', N_ESTIMATORS, LEARNING_RATE, MAX_DEPTH, 
-                 MIN_SAMPLE_SPLIT, MIN_SAMPLE_LEAF, SUBSAMPLE, '5']
+                    MIN_SAMPLE_SPLIT, MIN_SAMPLE_LEAF, SUBSAMPLE, '5']
     })
     st.table(model_info)
 
@@ -271,10 +273,10 @@ def display_stats(model_pipeline, preprocessor, stats):
     st.subheader("Testing and Training Information")
     split_info = pd.DataFrame({
         'Metric': ['Total Dataset Size', 'Training Data Size', 'Testing Data Size', 
-                  'Number of Features', 'Number of Categorical Features', 'Number of Numerical Features'],
+                    'Number of Features', 'Number of Categorical Features', 'Number of Numerical Features'],
         'Value': [f"{len(stats['X'])} records", f"{len(stats['X_train'])} records", 
-                 f"{len(stats['X_test'])} records", f"{len(stats['features'])}", 
-                 f"{len(stats['categorical_features'])}", f"{len(stats['numerical_features'])}"]
+                    f"{len(stats['X_test'])} records", f"{len(stats['features'])}", 
+                    f"{len(stats['categorical_features'])}", f"{len(stats['numerical_features'])}"]
     })
     st.table(split_info)
 
@@ -286,7 +288,7 @@ def display_stats(model_pipeline, preprocessor, stats):
         .tolist() + stats['numerical_features']
     )
     
-    importances = model_pipeline.named_steps['regressor'].feature_importances_
+    importances = model_pipeline.named_steps['gb_m'].feature_importances_
     feature_importance = pd.DataFrame({
         'Feature': feature_names,
         'Importance': importances
