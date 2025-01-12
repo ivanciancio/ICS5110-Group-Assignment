@@ -8,6 +8,12 @@ EXPERIENCE_LEVEL_MAPPING = [
     "Senior Level",   # For experienced professionals
     "Executive"       # For leadership positions
 ]
+EXPERIENCE_LEVEL_MAPPER = {
+    EXPERIENCE_LEVEL_MAPPING[0]: "EN",    # For newcomers to the field
+    EXPERIENCE_LEVEL_MAPPING[1]: "MI",    # For those with some experience
+    EXPERIENCE_LEVEL_MAPPING[2]: "SE",    # For experienced professionals
+    EXPERIENCE_LEVEL_MAPPING[3]: "EX"     # For leadership positions
+}
 
 EMPLOYMENT_TYPE_MAPPING = [
     "Full-Time",      # Standard full-time employment
@@ -15,19 +21,32 @@ EMPLOYMENT_TYPE_MAPPING = [
     "Contract",       # Fixed-term contract work
     "Freelance"       # Independent contractor work
 ]
+EMPLOYMENT_TYPE_MAPPER = {
+    EMPLOYMENT_TYPE_MAPPING[0]: "FT",      # Standard full-time employment
+    EMPLOYMENT_TYPE_MAPPING[1]: "PT",      # Part-time positions
+    EMPLOYMENT_TYPE_MAPPING[2]: "CT",      # Fixed-term contract work
+    EMPLOYMENT_TYPE_MAPPING[3]: "FL"       # Independent contractor work
+}
 
 COMPANY_SIZE_MAPPING = [
     "Small",            # Small enterprises
     "Medium",           # Mid-sized organisations
     "Large"             # Large corporations
 ]
+COMPANY_SIZE_MAPPER = {
+    COMPANY_SIZE_MAPPING[0]: "S",      # Small enterprises
+    COMPANY_SIZE_MAPPING[1]: "M",      # Mid-sized organisations
+    COMPANY_SIZE_MAPPING[2]: "L"       # Large corporations
+}
+
+
 
 
 
 # Mapping entries for Classification prediction
-ymapping=1 # we can set the year as 2022, which has 1 as value, because it is the closest to today
-exlemapping=[['Entry Level',0],['Mid Level',0.19],['Senior Level',0.56],['Executive',1.0]]
-emtymapping=[['Contract',1.0],['Freelance',0.10],['Full-Time',0.52],['Part-Time',0]]
+ymapping =1 # we can set the year as 2022, which has 1 as value, because it is the closest to today
+exlemapping=[['EN',0],['MI',0.19],['SE',0.56],['EX',1.0]]
+emtymapping=[['CT',1.0],['FL',0.10],['FT',0.52],['PT',0]]
 jtmapping=[['3D Computer Vision Researcher',0],['AI Scientist',0.152],['Analytics Engineer',0.424],\
             ['Applied Data Scientist',0.426],['Applied Machine Learning Scientist',0.341],['BI Data Analyst',0.173],\
             ['Big Data Architect',0.235],['Big Data Engineer',0.116],['Business Data Analyst',0.178],\
@@ -57,8 +76,7 @@ clmapping=[['AE',0.6254],['AS',0.0915],['AT',0.4489],['AU',0.6778],['BE',0.5322]
             ['IR',0.00],['IT',0.2108],['JP',0.7174],['KE',0.0343],['LU',0.2602],['MD',0.0912],['MT',0.1587],['MX',0.1832],['MY',0.2345],\
             ['NG',0.1693],['NL',0.3318],['NZ',0.7882],['PK',0.0608],['PL',0.4044],['PT',0.2853],['RO',0.3648],['RU',1.00],['SG',0.5556],\
             ['SI',0.3897],['TR',0.1048],['UA',0.0612],['US',0.9139],['VN',0.01]]
-csmapping=[['Large',1.00],['Medium',0.91],['Small',0.00]]
-
+csmapping=[['L',1.00],['M',0.91],['S',0.00]]
 
 
 # Function to retrieve value based on label

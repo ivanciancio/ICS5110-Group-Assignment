@@ -2,6 +2,8 @@
 import streamlit as st      # Web application framework for user interface
 import pandas as pd        # Data manipulation and analysis library
 import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns
 import random
 import time
 from joblib import Parallel, delayed
@@ -9,7 +11,7 @@ import multiprocessing
 
 from sklearn.compose import ColumnTransformer    # For combining preprocessing steps
 from sklearn.ensemble import RandomForestRegressor    # Machine learning model for prediction
-from sklearn.preprocessing import OneHotEncoder    # For encoding categorical variables
+from sklearn.preprocessing import StandardScaler, OneHotEncoder    # For encoding categorical variables
 from sklearn.model_selection import train_test_split, GridSearchCV, ParameterGrid, cross_val_score, KFold   # For splitting dataset into training and testing sets
 from sklearn.pipeline import Pipeline    # For creating sequential data processing steps
 from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score    # For calculating model accuracy
@@ -17,11 +19,11 @@ from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score   
 from data import data_mappings as dm
 
 # Model Parameter Tuning
-N_ESTIMATORS = 550 # 50
+N_ESTIMATORS = 50
 RANDOM_STATE = 42
-MAX_DEPTH = 35 # 30
+MAX_DEPTH = 14
 MAX_FEATURES = 15
-MIN_SAMPLE_SPLIT = 2 # 10
+MIN_SAMPLE_SPLIT = 15
 MIN_SAMPLE_LEAF = 1
 
 def evaluate_parameters(params, pipeline, X_train, y_train):
@@ -93,11 +95,11 @@ def discover_optimal_params(pipeline, param_grid, X_train, y_train):
                     test_results = {"Tested Params": params, "Best Params": best_params}
                     col1, col2 = st.columns(2)
                     with col1:
-                        st.write(f"Current MAE: :blue[{mean_cv_score:.6f}]")
+                        st.write(f"Current MAE: :blue[${mean_cv_score:,.2f}]")
                         st.write("Latest Tested Params:")
                         st.write(pd.DataFrame(test_results)['Tested Params'])
                     with col2:
-                        st.write(f"Best MAE: :green[{best_score:.6f}]")
+                        st.write(f"Best MAE: :green[${best_score:,.2f}]")
                         st.write("Best Params:")
                         st.write(pd.DataFrame(test_results)['Best Params'])
                 
@@ -119,12 +121,11 @@ def discover_optimal_params(pipeline, param_grid, X_train, y_train):
     
     finally:
         st.success("Tuning Complete")
-        st.write(f"Best MAE: :green[{best_score}]")
+        st.write(f"Best MAE: :green[${best_score:,.2f}]")
         st.write("Best Parameters:", pd.DataFrame(best_params.items(), columns=['Model Parameter', 'Optimal Value']))
         
         # Set the best parameters and fit on full training data
         pipeline.set_params(**best_params)
-        pipeline.fit(X_train, y_train)
         
         global N_ESTIMATORS, MAX_DEPTH, MAX_FEATURES, MIN_SAMPLE_SPLIT, MIN_SAMPLE_LEAF
         N_ESTIMATORS = best_params['rf_m__n_estimators']
@@ -140,10 +141,10 @@ def get_a_hypertuned_model(pipeline, X_train, y_train):
     with st.spinner("...hyperparameter tuning..."):
         param_grid = {
             'rf_m__n_estimators': [50, 100, 150, 300],
-            'rf_m__max_depth': [20, 25, 30, 35],
-            'rf_m__min_samples_split': [2, 10],
+            'rf_m__max_depth': [14, 20, 25, 30, 35],
+            'rf_m__min_samples_split': [2, 10, 15],
             'rf_m__max_features': [7, 15, 20],
-            'rf_m__min_samples_leaf': [1, 4, 5, 6, 10]
+            'rf_m__min_samples_leaf': [1, 4, 5, 10]
         }
         with st.container(border=True):
             pipeline = discover_optimal_params(pipeline, param_grid, X_train, y_train)
@@ -190,8 +191,8 @@ def init(use_hypertuning=False):
     
     if use_hypertuning:
         model_pipeline = get_a_hypertuned_model(model_pipeline, X_train, y_train)    # Train a hypertuned model
-    else:
-        model_pipeline.fit(X_train, y_train)    # Train the model
+
+    model_pipeline.fit(X_train, y_train)    # Train the model
 
     # Calculate model performance metrics
     model_perf_metrics = {}
@@ -316,8 +317,8 @@ def display_stats(model_pipeline, preprocessor, stats):
             f'{stats['unique_employee_residences']}',
             f'{stats['unique_job_titles']:,}',
             f'{stats['unique_locations']:,}',
-            f'{(stats['train_samples']/stats['total_samples'])*100:.1f}%',
-            f'{(stats['test_samples']/stats['total_samples'])*100:.1f}%'
+            f'{(stats['train_samples']/stats['total_samples'])*100}%',
+            f'{(stats['test_samples']/stats['total_samples'])*100:.0f}%'
         ]
     }
     
@@ -345,3 +346,5 @@ def display_stats(model_pipeline, preprocessor, stats):
     }).sort_values('Importance', ascending=False).head(10)
     st.markdown(feature_importance_df.style.format({'Importance': '{:.4f}'}).to_html(index=False), unsafe_allow_html=True)
     st.bar_chart(feature_importance_df.set_index('Feature'))
+
+

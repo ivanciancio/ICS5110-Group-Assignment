@@ -1,6 +1,8 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns
 import time
 from sklearn.compose import ColumnTransformer
 from sklearn.preprocessing import OneHotEncoder, StandardScaler
@@ -91,11 +93,11 @@ def discover_optimal_params(pipeline, param_grid, X_train, y_train):
                     test_results = {"Tested Params": params, "Best Params": best_params}
                     col1, col2 = st.columns(2)
                     with col1:
-                        st.write(f"Current MAE: :blue[{mean_cv_score:.6f}]")
+                        st.write(f"Current MAE: :blue[${mean_cv_score:,.2f}]")
                         st.write("Latest Tested Params:")
                         st.write(pd.DataFrame(test_results)['Tested Params'])
                     with col2:
-                        st.write(f"Best MAE: :green[{best_score:.6f}]")
+                        st.write(f"Best MAE: :green[${best_score:,.2f}]")
                         st.write("Best Params:")
                         st.write(pd.DataFrame(test_results)['Best Params'])
                 
@@ -117,12 +119,11 @@ def discover_optimal_params(pipeline, param_grid, X_train, y_train):
     
     finally:
         st.success("Tuning Complete")
-        st.write(f"Best MAE: :green[{best_score}]")
+        st.write(f"Best MAE: :green[${best_score:,.2f}]")
         st.write("Best Parameters:", pd.DataFrame(best_params.items(), columns=['Model Parameter', 'Optimal Value']))
         
         # Set the best parameters and fit on full training data
         pipeline.set_params(**best_params)
-        pipeline.fit(X_train, y_train)
         
         # Update global parameters
         global LEARNING_RATE, N_ESTIMATORS, MAX_DEPTH, MIN_SAMPLE_SPLIT, MIN_SAMPLE_LEAF, SUBSAMPLE
@@ -200,8 +201,8 @@ def init(use_hypertuning=False):
     
     if use_hypertuning:
         model_pipeline = get_a_hypertuned_model(model_pipeline, X_train, y_train)    # Train a hypertuned model
-    else:
-        model_pipeline.fit(X_train, y_train)
+
+    model_pipeline.fit(X_train, y_train)
 
     # Calculate metrics
     train_pred = model_pipeline.predict(X_train)
@@ -296,3 +297,5 @@ def display_stats(model_pipeline, preprocessor, stats):
 
     st.table(feature_importance.style.format({'Importance': '{:.4f}'}))
     st.bar_chart(feature_importance.set_index('Feature'))
+
+

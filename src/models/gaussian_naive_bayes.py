@@ -49,8 +49,15 @@ def predict(model,xinput):
 
     # predict salary class for the xinput
     predict_salary_class = model.predict(new_data_point)
-
-    st.success(f"The salary group prediction for the input vector {x_to_predict} is {predict_salary_class}")
+    
+    class_text = "Low"
+    if "M" in predict_salary_class:
+        class_text = "Medium"
+    if "H" in predict_salary_class:
+        class_text = "High"
+        
+    st.success(f"Predicted Salary Class: {predict_salary_class} (i.e. a '{class_text}' class)")
+    st.info(f"The salary group prediction for the input vector {x_to_predict} was {predict_salary_class}")
 
 
 def display_stats(stats):

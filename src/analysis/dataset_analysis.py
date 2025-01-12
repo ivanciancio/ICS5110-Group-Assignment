@@ -1,7 +1,9 @@
 import streamlit as st
+import os
 import numpy as np # linear algebra
 import pandas as pd # data processing, CSV file I/O (e.g. pd.read_csv)
 import matplotlib.pyplot as plt # for data visualization purposes
+import seaborn as sns
 from scipy.stats import skew
 from scipy.stats import kurtosis
 from sklearn.metrics import mutual_info_score
@@ -27,7 +29,7 @@ def standardization (arry):
 
     return stdarry
 
-@st.cache_data
+
 def print_information_and_statistics():
     #load raw dataset
     data = './src/data/Data_Science_Salaries.csv'
@@ -39,34 +41,59 @@ def print_information_and_statistics():
 
     df1=df1.drop_duplicates(keep='first')
     dfr=df1
-    st.write(f"dfr: {dfr.shape}")
+    
+    #separate the target feature y from the rest X and analyse y
+    st.subheader("Statistics")
+    y=dfr['salary_in_usd']
+    col1,col2=st.columns(2)
+    with col1.container(border=True):
+        minimum_salary=np.min(y)
+        maximum_salary=np.max(y)
+        average_salary=np.average(y)
+        mean_salary=y.mean()
+        median_salary=y.median()
+        st.write(f"Total Records: {len(y)}")
+        st.write(f"Minimum: ${minimum_salary:,.2f}")
+        st.write(f"Maximum: ${maximum_salary:,.2f}")
+        st.write(f"Average: ${average_salary:,.2f}")
+        st.write(f"Mean: ${mean_salary:,.2f}")
+        st.write(f"Median: ${median_salary:,.2f}")
+        st.write(f"Standard Deviation: ${np.std(y):,.2f}")
+    with col2.container(border=True):
+        # add the salary category feature
+        iqr25=np.percentile(y, 25)
+        lmsedge=np.percentile(y, 33)
+        mhsedge=np.percentile(y, 66)
+        iqr75=np.percentile(y, 75)
+        st.write(f"Skewness: {skew(y, axis=0, bias=True):.6f}")
+        st.write(f"Kurtosis: {kurtosis(y, axis=0, bias=True):.6f}")
+        st.write("")
+        st.write("")
+        st.write(f"25th percentile of arr : ${iqr25:,.2f}")
+        st.write(f"33rd percentile of arr : ${lmsedge:,.2f}")
+        st.write(f"66th percentile of arr : ${mhsedge:,.2f}")
+        st.write(f"75th percentile of arr : ${iqr75:,.2f}")
+    
+    # Plot the salary distribution
+    fig,ax=plt.subplots(figsize=(10, 6))
+    sns.histplot(y, kde=True, bins=30, color='blue', edgecolor='black')
+    ax.axvline(mean_salary, color='red', linestyle='dashed', linewidth=1, label=f'Mean: ${mean_salary:,.2f}')
+    ax.axvline(median_salary, color='green', linestyle='dashed', linewidth=1, label=f'Median: ${median_salary:,.2f}')
+    ax.set_title('Salary Distribution (USD)', fontsize=16)
+    ax.set_xlabel('Salary (USD)', fontsize=12)
+    ax.set_ylabel('Frequency', fontsize=12)
+    ax.legend()
+    ax.grid(axis='y', linestyle='--', alpha=0.7)
+    plt.close(fig)
+    st.pyplot(fig)
 
+    st.write("Dataset Entries Scatter Plot")
     #plot scatter original data
     df1["id"] = df1.index
-    fig,ax=plt.subplots(figsize=(10,6))
+    fig,ax=plt.subplots(figsize=(15,10))
     ax.scatter(df1['id'], df1['salary_in_usd'])
     plt.close(fig)
     st.pyplot(fig)
-
-
-    #separate the target feature y from the rest X and analyse y
-    y=dfr['salary_in_usd']
-    st.write (f"Average: {np.average(y)}")
-    st.write (f"Standard deviation: {np.std(y)}")
-    st.write(f"Skewness: {skew(y, axis=0, bias=True)}")
-    st.write(f"Kurtosis: {kurtosis(y, axis=0, bias=True)}")
-
-    #plot salary in USD distribution
-    fig,ax=plt.subplots(figsize=(10,6))
-    ax.hist(y, color='lightgreen', ec='black', bins=15)
-    plt.close(fig)
-    st.pyplot(fig)
-
-    # add the salary category feature
-    lmsedge=np.percentile(y, 33)
-    mhsedge=np.percentile(y, 66)
-    st.write(f"33rd percentile of arr : {lmsedge}")
-    st.write(f"66th percentile of arr : {mhsedge}")
 
     # create a list of our conditions
     def salary_group(value):
@@ -79,9 +106,8 @@ def print_information_and_statistics():
 
     dfr['salary_group'] = dfr['salary_in_usd'].map(salary_group)
 
-    st.write(f"dfr: {dfr.shape}")
-
-
+    st.divider()
+    
     # generate 3 csv files, one for regression with the salary_in_usd values, one for classification
     #with the salary_group and one for both with categorical features transformed to numerical ones 
     dfc = dfr
@@ -90,11 +116,14 @@ def print_information_and_statistics():
     regressionfile = './src/data/DS_salaries_regression.csv'
     filewithnumerical = './src/data/DS_salaries_regression_numerical.csv'
 
-    dfr.to_csv(regressionfile)
-    dfc.to_csv(classificationfile)               
-    st.write(f"dfr: {dfr.shape}")
-    st.write(f"dfc: {dfc.shape}")
-    st.write (dfr.head())
+    if not os.path.isfile(regressionfile):
+        dfr.to_csv(regressionfile)
+    if not os.path.isfile(classificationfile):
+        dfc.to_csv(classificationfile)     
+
+    st.write("Mapped Dataset Previews:")
+    
+    st.write(dfr.head())
 
     # transform categorical features into numerical ones using target encoding applying also scaling
     #year
@@ -175,8 +204,9 @@ def print_information_and_statistics():
     dfr['nd_company_size'] = dfr['company_size'].map(csmap)
 
     st.write (dfr.head())
-    # save the cleaned dataset with also the descaled numerical feature
-    dfr.to_csv(filewithnumerical)
+    if not os.path.isfile(filewithnumerical):
+        # save the cleaned dataset with also the descaled numerical feature
+        dfr.to_csv(filewithnumerical)
 
 
 
@@ -184,14 +214,15 @@ def print_information_and_statistics():
     x=dfr.drop(['salary_in_usd'], axis=1)
     x=x.drop(['salary_group'], axis=1)
 
-    st.write(f"x: {x.shape}")
     co=x.columns
     nco=len(co)
-    st.write(co)
+    #st.write(co)
 
 
+    st.divider()
 
-
+    st.write("Mutual Information Scores:")
+    col1,col2=st.columns([1,5])
     #Compute the mutual information for every pair of features
     matrixmi= np.zeros([nco, nco])
     i=0
@@ -204,22 +235,26 @@ def print_information_and_statistics():
             j=j+1
         i=i+1
 
-    fig,ax=plt.subplots(figsize=(10,6))
-    ax.imshow(matrixmi)
-    ax.set_title("Heat-map of the Mutual Information of the features of the Data scientist job roles dataset")
-    plt.close(fig)
-    st.pyplot(fig)
+    with col2:
+        fig,ax=plt.subplots(figsize=(15,8))
+        sns.heatmap(matrixmi,annot=True,cmap="coolwarm",ax=ax)
+        ax.imshow(matrixmi)
+        ax.set_title("Heat-map of the Mutual Information of the features of the Data scientist job roles dataset")
+        plt.close(fig)
+        st.pyplot(fig)
 
+    with col1:
+        #Compute the mutual information for every feature and the target
+        vectmift= np.zeros([nco])
+        i=0
 
-    #Compute the mutual information for every feature and the target
-    vectmift= np.zeros([nco])
-    i=0
-
-    for c1 in co:
-        vectmift[i] = round(mutual_info_score(x[c1], y),2)
-        i=i+1
-
-    st.write (vectmift)
+        for c1 in co:
+            vectmift[i] = round(mutual_info_score(x[c1], y),2)
+            i=i+1
+        
+        st.write(vectmift)
+    
+    st.divider()
 
 
 

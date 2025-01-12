@@ -83,16 +83,18 @@ def build_form():
         )
         col1,col2 = st.columns(2)
         with col2:
-            st.session_state.hypertuning_enabled = st.toggle(
+            hypertuning_toggled = st.toggle(
                 "Enable Regressor Model Hypertuning",
-                value=st.session_state.hypertuning_enabled
+                value=st.session_state.hypertuning_enabled,
+                key="hypertuning_toggled"
             )
         with col1:
             # Process prediction when requested
             predict_salary_click = st.form_submit_button("Predict Salary", use_container_width=True)
     
     if predict_salary_click or st.session_state.predict_button_clicked:
-        st.session_state.predict_button_clicked=True
+        #st.session_state.predict_button_clicked=True
+        st.session_state.hypertuning_enabled=hypertuning_toggled
         # Validate that all fields are filled
         if not all([st.session_state.experience_level, st.session_state.employment_type, st.session_state.job_title, st.session_state.employee_residence, st.session_state.company_location, st.session_state.company_size]):
             st.error("Please fill in all fields before prediction.")
@@ -104,17 +106,17 @@ def build_form():
 def predict_salary():
     # Create input dataframe for prediction
     form_data = {
-        "experience_level": [st.session_state.experience_level],
-        "employment_type": [st.session_state.employment_type],
+        "experience_level": [dm.EXPERIENCE_LEVEL_MAPPER[st.session_state.experience_level]],
+        "employment_type": [dm.EMPLOYMENT_TYPE_MAPPER[st.session_state.employment_type]],
         "job_title": [st.session_state.job_title],
         "employee_residence": [st.session_state.employee_residence],
         "company_location": [st.session_state.company_location],
-        "company_size": [st.session_state.company_size],
+        "company_size": [dm.COMPANY_SIZE_MAPPER[st.session_state.company_size]],
         "remote_ratio": [st.session_state.remote_ratio]
     }
     
     if st.session_state.hypertuning_enabled:
-        classifier_tab,regression_tab,regression_with_hypertuning_tab=st.tabs(["Classifier Models", "Regression Models", "Regression Models with Hypertunning"])
+        classifier_tab,regression_tab,regression_with_hypertuning_tab=st.tabs(["Classifier Models", "Regression Models", "Regression Models with Hypertuning"])
     else:
         classifier_tab,regression_tab=st.tabs(["Classifier Models", "Regression Models"])
     
