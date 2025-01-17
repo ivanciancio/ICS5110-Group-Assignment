@@ -29,7 +29,7 @@ def standardization (arry):
 
     return stdarry
 
-
+@st.cache_data
 def print_information_and_statistics():
     #load raw dataset
     data = './src/data/Data_Science_Salaries.csv'
@@ -263,6 +263,7 @@ def perform():
     st.title("Dataset Information and Statistics")
     st.write("Some information and statistics about the used dataset:")
     
-    with st.container(border=True):
-        print_information_and_statistics()
+    with st.spinner("performing data analysis, please wait..."):
+        with st.container(border=True):
+            print_information_and_statistics()
 

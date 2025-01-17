@@ -242,7 +242,8 @@ def predict(model_pipeline, input_data):
     st.subheader("Prediction Outcome")
     try:
         # Generate salary prediction
-        prediction = model_pipeline.predict(input_data)[0]
+        prediction = abs(model_pipeline.predict(input_data)[0])
+        #prediction = model_pipeline.predict(input_data)[0]
 
         # Calculate salary range with ±15% variation
         salary_range = (prediction * 0.85, prediction * 1.15)

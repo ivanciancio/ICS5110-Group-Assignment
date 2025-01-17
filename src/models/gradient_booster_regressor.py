@@ -228,7 +228,8 @@ def predict(model_pipeline, input_data):
     st.subheader("Prediction Outcome")
     # Make prediction
     try:
-        prediction = model_pipeline.predict(input_data)[0]
+        prediction = abs(model_pipeline.predict(input_data)[0])
+        #prediction = model_pipeline.predict(input_data)[0]
         
         # Calculate salary range (±15% from prediction)
         lower_bound = prediction * 0.85

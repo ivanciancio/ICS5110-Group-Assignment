@@ -4,6 +4,7 @@ import pandas as pd
 from data import data_mappings as dm
 
 from analysis import dataset_analysis as data_analysis
+from analysis import dataset_visualisations as data_visuals
 
 from models import gaussian_naive_bayes
 from models import knn
@@ -16,8 +17,11 @@ def build_ui():
     with st.spinner("loading in progress, please wait..."):
         tab1,tab2=st.tabs(["Salary Prediction","Dataset Analysis"])
         with tab2:
-            with st.spinner("performing data analysis, please wait..."):
+            data_analysis_tab,data_visualisations_tab=st.tabs(["Analysis","Visuals"])
+            with data_analysis_tab:
                 data_analysis.perform()
+            with data_visualisations_tab:
+                data_visuals.perform()
         with tab1:
             build_form()
 
@@ -131,61 +135,60 @@ def predict_salary():
                 form_data["company_location"][0],
                 form_data["company_size"][0]
             ]
-            
             clas_tab1,clas_tab2=st.tabs(["Gaussian Naive Bayes", "KNN"])
             with clas_tab1.container(border=True):
-                with st.spinner("training Gaussian Naive Bayes AI model, please wait..."):
-                    model_pipeline,stats=gaussian_naive_bayes.init()
-                with st.spinner("making predictions, please wait..."):
-                    gaussian_naive_bayes.predict(model_pipeline,x_input)
-                st.divider()
-                gaussian_naive_bayes.display_stats(stats)
+                predict_salary_using_gnb(x_input)
             with clas_tab2.container(border=True):
-                with st.spinner("training KNN AI model, please wait..."):
-                    model_pipeline,stats=knn.init()
-                with st.spinner("making predictions, please wait..."):
-                    knn.predict(model_pipeline,x_input)
-                st.divider()
-                knn.display_stats(stats)
+                predict_salary_using_knn(x_input)
         
+        df=pd.DataFrame(form_data)
         with regression_tab.container(border=True):
-            df=pd.DataFrame(form_data)
             reg_tab1,reg_tab2=st.tabs(["Random Forest", "Gradient Booster Regressor"])
             with reg_tab1.container(border=True):
-                with st.spinner("training Random Forest AI model, please wait..."):
-                    model_pipeline,preprocessor,stats=random_forest.init()
-                with st.spinner("making predictions, please wait..."):
-                    random_forest.predict(model_pipeline,df)
-                st.divider()
-                random_forest.display_stats(model_pipeline,preprocessor,stats)
+                predict_salary_using_rf(df)
             with reg_tab2.container(border=True):
-                with st.spinner("training Gradient Booster Regressor AI model, please wait..."):
-                    model_pipeline,preprocessor,stats=gradient_booster_regressor.init()
-                with st.spinner("making predictions, please wait..."):
-                    gradient_booster_regressor.predict(model_pipeline,df)
-                st.divider()
-                gradient_booster_regressor.display_stats(model_pipeline,preprocessor,stats)
+                predict_salary_using_gb(df)
 
         if st.session_state.hypertuning_enabled:
             with regression_with_hypertuning_tab.container(border=True):
-                df=pd.DataFrame(form_data)
                 reg_tab1,reg_tab2=st.tabs(["Random Forest", "Gradient Booster Regressor"])
                 with reg_tab1.container(border=True):
-                    with st.spinner("training Random Forest AI model, please wait..."):
-                        model_pipeline,preprocessor,stats=random_forest.init(True)
-                    st.divider()
-                    with st.spinner("making predictions, please wait..."):
-                        random_forest.predict(model_pipeline,df)
-                    st.divider()
-                    random_forest.display_stats(model_pipeline,preprocessor,stats)
+                    predict_salary_using_rf(df,True)
                 with reg_tab2.container(border=True):
-                    with st.spinner("training Gradient Booster Regressor AI model, please wait..."):
-                        model_pipeline,preprocessor,stats=gradient_booster_regressor.init(True)
-                    st.divider()
-                    with st.spinner("making predictions, please wait..."):
-                        gradient_booster_regressor.predict(model_pipeline,df)
-                    st.divider()
-                    gradient_booster_regressor.display_stats(model_pipeline,preprocessor,stats)
+                    predict_salary_using_gb(df,True)
 
+
+
+def predict_salary_using_gnb(x_input):
+    with st.spinner("training Gaussian Naive Bayes AI model, please wait..."):
+        model_pipeline,stats=gaussian_naive_bayes.init()
+    with st.spinner("making predictions, please wait..."):
+        gaussian_naive_bayes.predict(model_pipeline,stats['scaler'],x_input)
+    st.divider()
+    gaussian_naive_bayes.display_stats(stats)
+
+def predict_salary_using_knn(x_input):
+    with st.spinner("training KNN AI model, please wait..."):
+        model_pipeline,stats=knn.init()
+    with st.spinner("making predictions, please wait..."):
+        knn.predict(model_pipeline,stats['scaler'],x_input)
+    st.divider()
+    knn.display_stats(stats)
+
+def predict_salary_using_rf(df,use_hypertuning=False):
+    with st.spinner("training Random Forest AI model, please wait..."):
+        model_pipeline,preprocessor,stats=random_forest.init(use_hypertuning)
+    with st.spinner("making predictions, please wait..."):
+        random_forest.predict(model_pipeline,df)
+    st.divider()
+    random_forest.display_stats(model_pipeline,preprocessor,stats)
+
+def predict_salary_using_gb(df,use_hypertuning=False):
+    with st.spinner("training Gradient Booster Regressor AI model, please wait..."):
+        model_pipeline,preprocessor,stats=gradient_booster_regressor.init(use_hypertuning)
+    with st.spinner("making predictions, please wait..."):
+        gradient_booster_regressor.predict(model_pipeline,df)
+    st.divider()
+    gradient_booster_regressor.display_stats(model_pipeline,preprocessor,stats)
 
 
