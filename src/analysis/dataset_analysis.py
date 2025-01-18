@@ -29,7 +29,6 @@ def standardization (arry):
 
     return stdarry
 
-@st.cache_data
 def print_information_and_statistics():
     #load raw dataset
     data = './src/data/Data_Science_Salaries.csv'
@@ -213,6 +212,7 @@ def print_information_and_statistics():
     #remove the salary_in_usd and salary_group features
     x=dfr.drop(['salary_in_usd'], axis=1)
     x=x.drop(['salary_group'], axis=1)
+    x=x[[col for col in x.columns if col.startswith("nd_")]]
 
     co=x.columns
     nco=len(co)
@@ -234,7 +234,6 @@ def print_information_and_statistics():
             #st.write(c1, c2, i, j, matrixmi[i][j])
             j=j+1
         i=i+1
-
     with col2:
         fig,ax=plt.subplots(figsize=(15,8))
         sns.heatmap(matrixmi,annot=True,cmap="coolwarm",ax=ax)
@@ -242,6 +241,7 @@ def print_information_and_statistics():
         ax.set_title("Heat-map of the Mutual Information of the features of the Data scientist job roles dataset")
         plt.close(fig)
         st.pyplot(fig)
+        #st.write(matrixmi)
 
     with col1:
         #Compute the mutual information for every feature and the target

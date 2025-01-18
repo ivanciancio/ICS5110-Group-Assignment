@@ -1,5 +1,6 @@
 import streamlit as st
 import ui_engine as ui
+from analysis import dataset_analysis
 import pandas as pd
 
 
@@ -42,28 +43,11 @@ def init_session_variables():
         st.session_state.predict_button_clicked=False
 
 
-# Function to load and cache the datasets for improved performance
-def load_and_cache_datasets():
-    st.session_state.regression_data = load_data("./src/data/DS_salaries_regression.csv")    # Load dataset for Regression Models
-    st.session_state.classifiers_data = load_data("./src/data/DS_salaries_regression_classification_ONLY_numerical.csv")    # Load dataset for Classifier Models
-
-
-# Function to load the dataset from a file
-def load_data(file_path):
-    try:
-        return pd.read_csv(file_path)    # Load the CSV file into a pandas DataFrame
-    except FileNotFoundError:
-        st.error(f"File not found: {file_path}")    # Display error message if file is missing
-        st.stop()    # Halt application execution
-
 
 # Main Entry Point
 def main():
     with st.spinner("...initializing session variables..."):
         init_session_variables()
-    
-    with st.spinner("...loading datasets..."):
-        load_and_cache_datasets()
     
     ui.build_ui()
 

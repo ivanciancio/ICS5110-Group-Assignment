@@ -12,6 +12,21 @@ from models import gradient_booster_regressor
 from models import random_forest
 
 
+# Function to load and cache the datasets for improved performance
+def load_and_cache_datasets():
+    st.session_state.regression_data = load_data("./src/data/DS_salaries_regression.csv")    # Load dataset for Regression Models
+    st.session_state.classifiers_data = load_data("./src/data/DS_salaries_regression_classification_ONLY_numerical.csv")    # Load dataset for Classifier Models
+
+
+# Function to load the dataset from a file
+def load_data(file_path):
+    try:
+        return pd.read_csv(file_path)    # Load the CSV file into a pandas DataFrame
+    except FileNotFoundError:
+        st.error(f"File not found: {file_path}")    # Display error message if file is missing
+        st.stop()    # Halt application execution
+
+
 
 def build_ui():
     with st.spinner("loading in progress, please wait..."):
@@ -20,6 +35,8 @@ def build_ui():
             data_analysis_tab,data_visualisations_tab=st.tabs(["Analysis","Visuals"])
             with data_analysis_tab:
                 data_analysis.perform()
+                with st.spinner("...loading datasets..."):
+                    load_and_cache_datasets()
             with data_visualisations_tab:
                 data_visuals.perform()
         with tab1:

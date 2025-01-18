@@ -16,7 +16,6 @@ from wordcloud import WordCloud
 import nltk
 
 
-
 def Freq_df(cleanwordlist):
     Freq_dist_nltk = nltk.FreqDist(cleanwordlist)
     df_freq = pd.DataFrame.from_dict(Freq_dist_nltk, orient='index')
@@ -36,13 +35,12 @@ def Word_Cloud(data, color_background, colormap, title):
     st.pyplot(fig)
     st.divider()
 
-@st.cache_data
 def plot_visuals():
-    sns.set_theme(style="dark")
-    mpl.rcParams['axes.unicode_minus'] = False
-    pd.set_option('display.max_columns',None)
+    #sns.set_theme(style="dark")
+    #mpl.rcParams['axes.unicode_minus'] = False
+    #pd.set_option('display.max_columns',None)
     # plt.style.use('seaborn-dark-palette')
-    plt.style.use('dark_background')
+    #plt.style.use('dark_background')
 
     # read dataframe (drop 3 columns)
     df = pd.read_csv('./src/data/ds_salaries.csv')
