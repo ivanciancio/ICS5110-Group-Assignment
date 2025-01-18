@@ -1,9 +1,6 @@
-# Import required libraries for data manipulation, machine learning and web interface
-import streamlit as st      # Web application framework for user interface
-import pandas as pd        # Data manipulation and analysis library
+import streamlit as st
+import pandas as pd
 import numpy as np
-import matplotlib.pyplot as plt
-import seaborn as sns
 import random
 import time
 from joblib import Parallel, delayed
@@ -14,7 +11,7 @@ from sklearn.ensemble import RandomForestRegressor    # Machine learning model f
 from sklearn.preprocessing import StandardScaler, OneHotEncoder    # For encoding categorical variables
 from sklearn.model_selection import train_test_split, GridSearchCV, ParameterGrid, cross_val_score, KFold   # For splitting dataset into training and testing sets
 from sklearn.pipeline import Pipeline    # For creating sequential data processing steps
-from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score    # For calculating model accuracy
+from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 
 from data import data_mappings as dm
 
@@ -27,7 +24,7 @@ MIN_SAMPLE_SPLIT = 15
 MIN_SAMPLE_LEAF = 1
 
 def evaluate_parameters(params, pipeline, X_train, y_train):
-    """Evaluate a single parameter combination"""
+    """Evaluate a single parameter combination with log-transformed target"""
     pipeline.set_params(**params)
     cv_scores = cross_val_score(
         pipeline, 
@@ -35,7 +32,7 @@ def evaluate_parameters(params, pipeline, X_train, y_train):
         y_train, 
         cv=5, 
         scoring='neg_mean_absolute_error',
-        n_jobs=1  # Use 1 job here since we're already parallelizing the parameter search
+        n_jobs=1  # Using 1 job here since we're already parallelizing the parameter search
     )
     return -np.mean(cv_scores), params
 
@@ -95,18 +92,18 @@ def discover_optimal_params(pipeline, param_grid, X_train, y_train):
                     test_results = {"Tested Params": params, "Best Params": best_params}
                     col1, col2 = st.columns(2)
                     with col1:
-                        st.write(f"Current MAE: :blue[${mean_cv_score:,.2f}]")
+                        st.write(f"Current MAE: :blue[${np.expm1(mean_cv_score):,.2f}]")
                         st.write("Latest Tested Params:")
                         st.write(pd.DataFrame(test_results)['Tested Params'])
                     with col2:
-                        st.write(f"Best MAE: :green[${best_score:,.2f}]")
+                        st.write(f"Best MAE: :green[${np.expm1(best_score):,.2f}]")
                         st.write("Best Params:")
                         st.write(pd.DataFrame(test_results)['Best Params'])
                 
                 # Update chart
                 chart.line_chart(pd.DataFrame({
                     'Iteration': iterations,
-                    'MAE': mae_scores
+                    'MAE': np.expm1(mae_scores)  # Transform back for visualization
                 }).set_index('Iteration'))
                 
                 # Small delay for UI updates
@@ -121,7 +118,7 @@ def discover_optimal_params(pipeline, param_grid, X_train, y_train):
     
     finally:
         st.success("Tuning Complete")
-        st.write(f"Best MAE: :green[${best_score:,.2f}]")
+        st.write(f"Best MAE: :green[${np.expm1(best_score):,.2f}]")
         st.write("Best Parameters:", pd.DataFrame(best_params.items(), columns=['Model Parameter', 'Optimal Value']))
         
         # Set the best parameters and fit on full training data
@@ -163,8 +160,8 @@ def init(use_hypertuning=False):
     # Create data preprocessing pipeline
     preprocessor = ColumnTransformer(
         transformers=[
-            ('cat', OneHotEncoder(handle_unknown='ignore'), categorical_features),    # Transform categorical variables
-            ('num', 'passthrough', numerical_features)    # Keep numerical variables unchanged
+            ('cat', OneHotEncoder(handle_unknown='ignore'), categorical_features),
+            ('num', StandardScaler(), numerical_features)
         ])
     
     # Create complete machine learning pipeline
@@ -178,41 +175,47 @@ def init(use_hypertuning=False):
             min_samples_split=MIN_SAMPLE_SPLIT,
             min_samples_leaf=MIN_SAMPLE_LEAF,
             n_jobs=1  # Set to 1 since we're handling parallelization manually
-            ))    # Apply data preprocessing
+            ))
     ])
 
-    # Split dataset and train the model
+    # Log transform the target variable
+    y = np.log1p(st.session_state.regression_data['salary_in_usd'])
+
+    # Split dataset with log-transformed target
     X_train, X_test, y_train, y_test = train_test_split(
         st.session_state.regression_data[dm.REGRESSION_FEATURES], 
-        st.session_state.regression_data['salary_in_usd'], 
+        y,  # Using log-transformed target
         test_size=0.2, 
         random_state=RANDOM_STATE
     )
     
     if use_hypertuning:
-        model_pipeline = get_a_hypertuned_model(model_pipeline, X_train, y_train)    # Train a hypertuned model
+        model_pipeline = get_a_hypertuned_model(model_pipeline, X_train, y_train)
 
     model_pipeline.fit(X_train, y_train)    # Train the model
 
+    # Calculate metrics (transform predictions basck to original scale)
+    y_pred = np.expm1(model_pipeline.predict(X_test))
+    y_test_original = np.expm1(y_test)
+    
     # Calculate model performance metrics
     model_perf_metrics = {}
-    y_pred = model_pipeline.predict(X_test)
-    model_perf_metrics['mae'] = mean_absolute_error(y_test, y_pred)    # Calculate prediction accuracy
-    model_perf_metrics['mse'] = mean_squared_error(y_test, y_pred)
-    model_perf_metrics['r2'] = r2_score(y_test, y_pred)
+    model_perf_metrics['mae'] = mean_absolute_error(y_test_original, y_pred)
+    model_perf_metrics['mse'] = mean_squared_error(y_test_original, y_pred)
+    model_perf_metrics['r2'] = r2_score(y_test_original, y_pred)
     
-    # Cross-validation 
+    # Cross-validation with log-transformed target
     cv_metrics = {}
     cv = KFold(n_splits=5, shuffle=True, random_state=42)
     cv_metrics['cv_score'] = cross_val_score(
         model_pipeline, 
         X_train, 
-        y_train, 
+        y_train,
         cv=cv, 
         scoring='neg_mean_absolute_error',
-        n_jobs=1  # Set to 1 since we're handling parallelization manually
+        n_jobs=1
     )
-    cv_metrics['cv_mae_scores'] = -cv_metrics['cv_score']
+    cv_metrics['cv_mae_scores'] = np.expm1(-cv_metrics['cv_score'])  # Transform back for interpretability
     cv_metrics['cv_mae_mean'] = cv_metrics['cv_mae_scores'].mean()
     cv_metrics['cv_mae_std'] = cv_metrics['cv_mae_scores'].std()
     
@@ -240,17 +243,22 @@ def init(use_hypertuning=False):
 
 def predict(model_pipeline, input_data):
     st.subheader("Prediction Outcome")
+    # Generate salary prediction
     try:
-        # Generate salary prediction
-        prediction = abs(model_pipeline.predict(input_data)[0])
+        # Make prediction on log scale
+        log_prediction = model_pipeline.predict(input_data)[0]
+        # Transform back to original scale
+        prediction = np.expm1(log_prediction)
+        
+        #prediction = abs(model_pipeline.predict(input_data)[0])
         #prediction = model_pipeline.predict(input_data)[0]
-
+        
         # Calculate salary range with ±15% variation
-        salary_range = (prediction * 0.85, prediction * 1.15)
+        lower_bound = prediction * 0.85
+        upper_bound = prediction * 1.15
 
-        # Display prediction results
-        st.success(f"Predicted Salary Range (±15%): \${float(salary_range[0]):0,.2f} - \${float(salary_range[1]):0,.2f}")
-        st.info(f"Base Prediction: ${float(prediction):0,.2f}")
+        st.success(f"Predicted Salary Range (±15%): \${lower_bound:,.2f} - \${upper_bound:,.2f}")
+        st.info(f"Base Prediction: ${prediction:,.2f}")
         
     except Exception as e:
         st.error(f"An error occurred during prediction: {e}")    # Handle and display any errors
@@ -269,7 +277,8 @@ def display_stats(model_pipeline, preprocessor, stats):
             'Minimum Samples Leaf',
             'Mean Absolute Error (MAE)',
             'Mean Squared Error (MSE)',
-            'R² Score'
+            'R² Score',
+            'Target Transformation'
         ],
         'Value': [
             'Random Forest Regressor',
@@ -281,12 +290,13 @@ def display_stats(model_pipeline, preprocessor, stats):
             MIN_SAMPLE_LEAF,
             stats['model_perf_metrics']['mae'],
             stats['model_perf_metrics']['mse'],
-            stats['model_perf_metrics']['r2']
+            stats['model_perf_metrics']['r2'],
+            'Natural Log (log1p)'
         ]
     }
     model_info_df = pd.DataFrame(pd.DataFrame(model_info))
     html_table = model_info_df.to_html(index=False)
-    st.markdown(html_table, unsafe_allow_html=True)    # Present model parameters
+    st.markdown(html_table, unsafe_allow_html=True)
     
     st.write(f"In the context of our task, the calculated MAE was approximately ${stats['model_perf_metrics']['mae']:,.2f}, meaning the model's salary predictions are off by about that amount on average.")
     
@@ -309,7 +319,8 @@ def display_stats(model_pipeline, preprocessor, stats):
             'Unique Job Titles',
             'Unique Company Locations',
             'Training Data Percentage',
-            'Testing Data Percentage'
+            'Testing Data Percentage',
+            'Target Transformation'
         ],
         'Value': [
             f'{stats['total_samples']:,}',
@@ -319,20 +330,21 @@ def display_stats(model_pipeline, preprocessor, stats):
             f'{stats['unique_job_titles']:,}',
             f'{stats['unique_locations']:,}',
             f'{(stats['train_samples']/stats['total_samples'])*100}%',
-            f'{(stats['test_samples']/stats['total_samples'])*100:.0f}%'
+            f'{(stats['test_samples']/stats['total_samples'])*100:.0f}%',
+            'Natural Log (log1p)'
         ]
     }
     
     stats_df = pd.DataFrame(pd.DataFrame(training_info))
     html_table = stats_df.to_html(index=False)
-    st.markdown(html_table, unsafe_allow_html=True)    # Present dataset statistics
+    st.markdown(html_table, unsafe_allow_html=True)
     
-    # Display features used for prediction
+    # Displaying features used for prediction
     st.subheader("Features Used for Prediction")
     features_df = pd.DataFrame({'Features': stats['features']})
-    st.markdown(features_df.to_html(index=False), unsafe_allow_html=True)    # Present feature list
+    st.markdown(features_df.to_html(index=False), unsafe_allow_html=True)
     
-    # Display feature importance
+    # Displaying feature importance
     st.subheader("Top 10 Most Important Features")
     feature_names = (
         preprocessor.named_transformers_['cat']

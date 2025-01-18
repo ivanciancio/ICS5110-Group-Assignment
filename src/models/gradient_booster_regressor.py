@@ -1,8 +1,6 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
-import matplotlib.pyplot as plt
-import seaborn as sns
 import time
 from sklearn.compose import ColumnTransformer
 from sklearn.preprocessing import OneHotEncoder, StandardScaler
@@ -22,10 +20,10 @@ RANDOM_STATE = 42
 MAX_DEPTH = 6
 MIN_SAMPLE_SPLIT = 5
 MIN_SAMPLE_LEAF = 4
-SUBSAMPLE = 0.8
+SUBSAMPLE =  0.8
 
 def evaluate_parameters(params, pipeline, X_train, y_train):
-    """Evaluate a single parameter combination"""
+    """Evaluate a single parameter combination with log-transformed target"""
     pipeline.set_params(**params)
     cv_scores = cross_val_score(
         pipeline, 
@@ -33,7 +31,7 @@ def evaluate_parameters(params, pipeline, X_train, y_train):
         y_train, 
         cv=5, 
         scoring='neg_mean_absolute_error',
-        n_jobs=1  # Use 1 job here since we're already parallelizing the parameter search
+        n_jobs=1  # Using 1 job here since we're already parallelizing the parameter search
     )
     return -np.mean(cv_scores), params
 
@@ -93,18 +91,18 @@ def discover_optimal_params(pipeline, param_grid, X_train, y_train):
                     test_results = {"Tested Params": params, "Best Params": best_params}
                     col1, col2 = st.columns(2)
                     with col1:
-                        st.write(f"Current MAE: :blue[${mean_cv_score:,.2f}]")
+                        st.write(f"Current MAE: :blue[${np.expm1(mean_cv_score):,.2f}]")
                         st.write("Latest Tested Params:")
                         st.write(pd.DataFrame(test_results)['Tested Params'])
                     with col2:
-                        st.write(f"Best MAE: :green[${best_score:,.2f}]")
+                        st.write(f"Best MAE: :green[${np.expm1(best_score):,.2f}]")
                         st.write("Best Params:")
                         st.write(pd.DataFrame(test_results)['Best Params'])
                 
                 # Update chart
                 chart.line_chart(pd.DataFrame({
                     'Iteration': iterations,
-                    'MAE': mae_scores
+                    'MAE': np.expm1(mae_scores)  # Transform back for visualization
                 }).set_index('Iteration'))
                 
                 # Small delay for UI updates
@@ -119,7 +117,7 @@ def discover_optimal_params(pipeline, param_grid, X_train, y_train):
     
     finally:
         st.success("Tuning Complete")
-        st.write(f"Best MAE: :green[${best_score:,.2f}]")
+        st.write(f"Best MAE: :green[${np.expm1(best_score):,.2f}]")
         st.write("Best Parameters:", pd.DataFrame(best_params.items(), columns=['Model Parameter', 'Optimal Value']))
         
         # Set the best parameters and fit on full training data
@@ -182,33 +180,35 @@ def init(use_hypertuning=False):
         ))
     ])
 
-    # Perform cross-validation
+    # Log transform the target variable
+    y = np.log1p(st.session_state.regression_data['salary_in_usd'])
+    
+    # Perform cross-validation on log-transformed target
     cv = KFold(n_splits=5, shuffle=True, random_state=42)
     cv_scores = cross_val_score(model_pipeline, st.session_state.regression_data[features], 
-                                st.session_state.regression_data['salary_in_usd'], 
-                                cv=cv, scoring='neg_mean_absolute_error')
-    cv_mae_scores = -cv_scores
+                                y, cv=cv, scoring='neg_mean_absolute_error')
+    cv_mae_scores = np.expm1(-cv_scores)  # Transform back for interpretability
     cv_mae_mean = cv_mae_scores.mean()
     cv_mae_std = cv_mae_scores.std()
 
-    # Split the data and train the final model
+    # Split the data using log-transformed target
     X_train, X_test, y_train, y_test = train_test_split(
         st.session_state.regression_data[features], 
-        st.session_state.regression_data['salary_in_usd'], 
+        y, # Using log-transformed values as target
         test_size=0.2, 
         random_state=42
     )
     
     if use_hypertuning:
-        model_pipeline = get_a_hypertuned_model(model_pipeline, X_train, y_train)    # Train a hypertuned model
+        model_pipeline = get_a_hypertuned_model(model_pipeline, X_train, y_train)
 
-    model_pipeline.fit(X_train, y_train)
+    model_pipeline.fit(X_train, y_train) # Train the model
 
-    # Calculate metrics
-    train_pred = model_pipeline.predict(X_train)
-    test_pred = model_pipeline.predict(X_test)
-    train_mae = mean_absolute_error(y_train, train_pred)
-    test_mae = mean_absolute_error(y_test, test_pred)
+    # Calculate metrics (transform predictions back to original scale)
+    train_pred = np.expm1(model_pipeline.predict(X_train))
+    test_pred = np.expm1(model_pipeline.predict(X_test))
+    train_mae = mean_absolute_error(np.expm1(y_train), train_pred)
+    test_mae = mean_absolute_error(np.expm1(y_test), test_pred)
     
     return model_pipeline, preprocessor, {
         'cv_mae_mean': cv_mae_mean,
@@ -228,7 +228,12 @@ def predict(model_pipeline, input_data):
     st.subheader("Prediction Outcome")
     # Make prediction
     try:
-        prediction = abs(model_pipeline.predict(input_data)[0])
+        # Make prediction on log scale
+        log_prediction = model_pipeline.predict(input_data)[0]
+        # Transform back to original scale
+        prediction = np.expm1(log_prediction)
+        
+        #prediction = abs(model_pipeline.predict(input_data)[0])
         #prediction = model_pipeline.predict(input_data)[0]
         
         # Calculate salary range (±15% from prediction)
@@ -261,28 +266,31 @@ def display_stats(model_pipeline, preprocessor, stats):
     with col2:
         st.metric("Testing MAE", f"${stats['test_mae']:,.2f}")
 
-    # Display model information
+    # Displaying model information
     st.subheader("Model Information Used")
     model_info = pd.DataFrame({
         'Parameter': ['Algorithm', 'Number of Trees', 'Learning Rate', 'Max Tree Depth', 
-                        'Min Samples Split', 'Min Samples Leaf', 'Subsample Ratio', 'Cross-Validation Folds'],
+                    'Min Samples Split', 'Min Samples Leaf', 'Subsample Ratio', 'Cross-Validation Folds',
+                    'Target Transformation'],
         'Value': ['Gradient Boosting', N_ESTIMATORS, LEARNING_RATE, MAX_DEPTH, 
-                    MIN_SAMPLE_SPLIT, MIN_SAMPLE_LEAF, SUBSAMPLE, '5']
+                MIN_SAMPLE_SPLIT, MIN_SAMPLE_LEAF, SUBSAMPLE, '5', 'Log1p']
     })
     st.table(model_info)
 
-    # Display testing and training information
+    # Displaying test and training information
     st.subheader("Testing and Training Information")
     split_info = pd.DataFrame({
         'Metric': ['Total Dataset Size', 'Training Data Size', 'Testing Data Size', 
-                    'Number of Features', 'Number of Categorical Features', 'Number of Numerical Features'],
+                'Number of Features', 'Number of Categorical Features', 'Number of Numerical Features',
+                'Target Transformation'],
         'Value': [f"{len(stats['X'])} records", f"{len(stats['X_train'])} records", 
-                    f"{len(stats['X_test'])} records", f"{len(stats['features'])}", 
-                    f"{len(stats['categorical_features'])}", f"{len(stats['numerical_features'])}"]
+                f"{len(stats['X_test'])} records", f"{len(stats['features'])}", 
+                f"{len(stats['categorical_features'])}", f"{len(stats['numerical_features'])}",
+                "Natural Log (log1p)"]
     })
     st.table(split_info)
 
-    # Display feature importance
+    # Displaying feature importance
     st.subheader("Top 10 Most Important Features")
     feature_names = (
         preprocessor.named_transformers_['cat']
@@ -298,5 +306,6 @@ def display_stats(model_pipeline, preprocessor, stats):
 
     st.table(feature_importance.style.format({'Importance': '{:.4f}'}))
     st.bar_chart(feature_importance.set_index('Feature'))
-
-
+    
+    
+    
