@@ -6,7 +6,7 @@ from sklearn.metrics import accuracy_score
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import confusion_matrix, classification_report
 
-from sklearn.neighbors import KNeighborsClassifier
+from sklearn import svm
 from sklearn.preprocessing import StandardScaler
 
 from data import data_mappings as dm
@@ -29,20 +29,8 @@ def init():
     X_val = scaler.transform(X_val)
     X_test = scaler.transform(X_test)
 
-    # accuracy vs k value distribution with Euclidean distance metric
-    num_neighbours = np.arange(1,361)
-    performance = []
-    for k in num_neighbours:
-        clf = KNeighborsClassifier (n_neighbors=k, metric='euclidean')
-        clf.fit(X_train,y_train)
-        y_pred = clf.predict(X_val)
-        acc=accuracy_score(y_val, y_pred)
-        performance.append(acc)
-
-    # best_index = np.argmax(performance)
-
-    # calculate performance metrics for the best value of k = 91
-    clf = KNeighborsClassifier (n_neighbors=91, metric='euclidean')
+    # calculate performance metrics with SVM
+    clf = svm.LinearSVC()
     clf.fit(X_train,y_train)
     y_pred = clf.predict(X_val)
     acc=accuracy_score(y_val, y_pred)
@@ -50,7 +38,7 @@ def init():
     y_predt = clf.predict(X_test)
     acct=accuracy_score(y_test, y_predt)
     
-    return clf, { 'X': X,'y': y,'scaler': scaler,'X_train': X_train,'X_val': X_val,'y_val': y_val,'X_test': X_test,'y_test': y_test,'acc': acc,'acct': acct,'num_neighbours': num_neighbours,'performance': performance,'y_pred': y_pred,'y_predt': y_predt}
+    return clf, { 'X': X,'y': y,'scaler': scaler,'X_train': X_train,'X_val': X_val,'y_val': y_val,'X_test': X_test,'y_test': y_test,'acc': acc,'acct': acct,'y_pred': y_pred,'y_predt': y_predt}
 
 
 def predict(model,scaler,xinput):
@@ -92,36 +80,10 @@ def display_stats(stats):
     st.write("Number of datapoints in the validation set: " + str(stats['X_val'].shape[0]))
     st.write("Number of datapoints in the test set: " + str(stats['X_test'].shape[0]))
     st.write("")
-    st.write("The performance of the KNN with K=91 is: %.2f"%(stats['acc']))
+    st.write("The performance of the SVC using the test set is: %.2f"%(stats['acc']))
     st.write("")
     
-    # plot the distribution
-    fig,ax=plt.subplots(figsize=(10,6))
-    ax.plot(stats['num_neighbours'], stats['performance'])
-    plt.grid(True)
-    plt.close(fig)
-    st.pyplot(fig)
-
-    
     st.write(f"Target feature distribution {stats['y'].value_counts()}")
-
-    """
-    # accuracy vs k value distribution with Euclidean distance metric
-    num_neighbours = np.arange(1,361)
-    performance = []
-    for k in num_neighbours:
-        clf = KNeighborsClassifier (n_neighbors=k, metric='euclidean')
-        clf.fit(X_train,y_train)
-        y_pred = clf.predict(X_val)
-        acc=accuracy_score(y_val, y_pred)
-        performance.append(acc)
-
-    # plot the distribution
-    plt.plot(num_neighbours, performance)
-    plt.grid(True)
-    plt.show()
-    best_index = np.argmax(performance)
-    """
 
     # Compute the confusion matrix
     conf_matrix = confusion_matrix(stats['y_val'], stats['y_pred'], labels=['L', 'M', 'H'])
@@ -130,10 +92,10 @@ def display_stats(stats):
     classification_metrics = classification_report(stats['y_val'], stats['y_pred'], target_names=['L', 'M', 'H'])
 
     # Display results
-    st.write("Confusion Matrix with K=91:")
+    st.write("Confusion Matrix for SVC:")
     st.write(conf_matrix)
     st.write("")
-    st.write("Classification Report with k=91:")
+    st.write("Classification Report for SVC:")
     st.write(classification_metrics)
 
     # Compute the confusion matrix
@@ -143,8 +105,8 @@ def display_stats(stats):
     classification_metrics_t = classification_report(stats['y_test'], stats['y_predt'], target_names=['L', 'M', 'H'])
 
     # Display results
-    st.write("Confusion Matrix with K=91 with the test set:")
+    st.write("Confusion Matrix for SVC with the test set:")
     st.write(conf_matrixt)
     st.write("")
-    st.write("Classification Report with k=91 with the test set:")
+    st.write("Classification Report for SVC with the test set:")
     st.write(classification_metrics_t)

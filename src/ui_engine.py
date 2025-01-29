@@ -8,6 +8,7 @@ from analysis import dataset_visualisations as data_visuals
 
 from models import gaussian_naive_bayes
 from models import knn
+from models import sv
 from models import gradient_booster_regressor
 from models import random_forest
 
@@ -152,11 +153,13 @@ def predict_salary():
                 form_data["company_location"][0],
                 form_data["company_size"][0]
             ]
-            clas_tab1,clas_tab2=st.tabs(["Gaussian Naive Bayes", "KNN"])
+            clas_tab1,clas_tab2,clas_tab3=st.tabs(["Gaussian Naive Bayes", "KNN", "Linear SVC"])
             with clas_tab1.container(border=True):
                 predict_salary_using_gnb(x_input)
             with clas_tab2.container(border=True):
                 predict_salary_using_knn(x_input)
+            with clas_tab3.container(border=True):
+                predict_salary_using_sv(x_input)
         
         df=pd.DataFrame(form_data)
         with regression_tab.container(border=True):
@@ -191,6 +194,14 @@ def predict_salary_using_knn(x_input):
         knn.predict(model_pipeline,stats['scaler'],x_input)
     st.divider()
     knn.display_stats(stats)
+
+def predict_salary_using_sv(x_input):
+    with st.spinner("training Linear SVC model, please wait..."):
+        model_pipeline,stats=sv.init()
+    with st.spinner("making predictions, please wait..."):
+        sv.predict(model_pipeline,stats['scaler'],x_input)
+    st.divider()
+    sv.display_stats(stats)
 
 def predict_salary_using_rf(df,use_hypertuning=False):
     with st.spinner("training Random Forest AI model, please wait..."):
